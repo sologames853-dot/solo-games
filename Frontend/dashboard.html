@@ -557,7 +557,7 @@
 
         <div class="referral-box">
             <span class="referral-code-text" id="referralCode">LOADING...</span>
-            <button class="btn-copy-ref" onclick="copyReferral()"><i class="fas fa-copy"></i> COPY CODE</button>
+            <button class="btn-copy-ref" onclick="copyReferral()"><i class="fas fa-link"></i> COPY LINK</button>
         </div>
         <div class="referral-actions">
             <a href="#" id="whatsappLink" class="btn-whatsapp-ref" onclick="shareWhatsApp()">
@@ -703,15 +703,25 @@
             const refCode = document.getElementById("referralCode").innerText;
             if (refCode === "LOADING..." || refCode === "N/A") return;
 
-            navigator.clipboard.writeText(refCode).then(() => {
-                alert("Referral Code copied: " + refCode);
+            const referralLink = `https://sologamesapk.netlify.app/register.html?ref=${refCode}`;
+
+            navigator.clipboard.writeText(referralLink).then(() => {
+                alert("Referral Link copied: " + referralLink);
             }).catch(err => {
                 console.error("Could not copy text: ", err);
+                // Fallback to copying just the code if clipboard API fails
+                alert("Referral Code: " + refCode);
             });
         }
 
         function shareWhatsApp() {
-            const text = "https://soloapk.netlify.app/";
+            const refCode = document.getElementById("referralCode").innerText;
+            const baseUrl = "https://sologamesapk.netlify.app/register.html";
+            const link = refCode !== "LOADING..." && refCode !== "N/A"
+                ? `${baseUrl}?ref=${refCode}`
+                : "https://sologamesapk.netlify.app/";
+
+            const text = `Join Solo Games and win real cash! 🤑 Register using my link and get ₹20 Bonus on your first deposit. \n\nClick here: ${link}`;
 
             // Use whatsapp:// protocol for mobile apps, fallback to web
             const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(text)}`;
