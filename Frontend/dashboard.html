@@ -703,29 +703,27 @@
             const refCode = document.getElementById("referralCode").innerText;
             if (refCode === "LOADING..." || refCode === "N/A") return;
 
-            const referralLink = `https://sologamesapk.netlify.app/register.html?ref=${refCode}`;
+            const referralLink = (refCode !== "LOADING..." && refCode !== "N/A")
+                ? `https://sologamesapk.netlify.app/?ref=${refCode}`
+                : "https://sologamesapk.netlify.app/";
 
             navigator.clipboard.writeText(referralLink).then(() => {
-                alert("Referral Link copied: " + referralLink);
+                alert("Link copied: " + referralLink);
             }).catch(err => {
                 console.error("Could not copy text: ", err);
-                // Fallback to copying just the code if clipboard API fails
                 alert("Referral Code: " + refCode);
             });
         }
 
         function shareWhatsApp() {
             const refCode = document.getElementById("referralCode").innerText;
-            const baseUrl = "https://sologamesapk.netlify.app/register.html";
-            const link = refCode !== "LOADING..." && refCode !== "N/A"
-                ? `${baseUrl}?ref=${refCode}`
+            const link = (refCode !== "LOADING..." && refCode !== "N/A")
+                ? `https://sologamesapk.netlify.app/?ref=${refCode}`
                 : "https://sologamesapk.netlify.app/";
 
-            const text = `Join Solo Games and win real cash! 🤑 Register using my link and get ₹20 Bonus on your first deposit. \n\nClick here: ${link}`;
-
             // Use whatsapp:// protocol for mobile apps, fallback to web
-            const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(text)}`;
-            const webWhatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+            const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(link)}`;
+            const webWhatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(link)}`;
 
             // Try to open WhatsApp app directly
             window.location.href = whatsappUrl;
