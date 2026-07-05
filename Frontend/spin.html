@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Indian Classic Spin Wheel | Solo Games</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --gold: #ffc107; --bg: #064e3b; --poker-blue: #1e3a8a; --action-red: #ef4444; --action-green: #22c55e; }
+        body {
+            background-color: #2e0249;
+            background-image: radial-gradient(circle at 50% 50%, #570a88 0%, #2e0249 100%);
+            background-attachment: fixed;
+            color: white; font-family: 'Roboto', sans-serif; margin: 0; min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden;
+        }
+
+        .header { padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .logo-text { font-size: 14px; color: var(--gold); font-weight: 900; line-height: 1.2; }
+        .wallet { background: #5d4037; padding: 5px 12px; border-radius: 20px; font-weight: 900; color: #ffeb3b; border: 1.5px solid #8d6e63; }
+
+        /* WHEEL SECTION */
+        .wheel-container { position: relative; width: 340px; height: 340px; margin: 20px auto; display: flex; align-items: center; justify-content: center; }
+
+        .wheel-outer {
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            position: relative;
+            transition: transform 2s cubic-bezier(0.1, 0.7, 0.1, 1);
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            background: #000;
+            z-index: 5;
+        }
+
+        .wheel-img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            display: block;
+            pointer-events: none;
+        }
+
+        .pointer {
+            position: absolute;
+            top: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 45px;
+            z-index: 150;
+            filter: drop-shadow(0 0 8px rgba(0,0,0,0.8));
+        }
+
+        .wheel-status-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.85);
+            border: 2px solid var(--gold);
+            padding: 10px 20px;
+            border-radius: 12px;
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        .status-icon { font-size: 24px; color: var(--gold); }
+        .status-text { font-size: 10px; font-weight: 900; color: white; text-transform: uppercase; white-space: nowrap; }
+
+        .timer-box { background: rgba(0,0,0,0.5); padding: 10px; width: 80%; margin: 0 auto; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); text-align: center; }
+        .timer-val { font-size: 20px; font-weight: 900; color: var(--gold); }
+        .progress-bar { height: 4px; background: #333; width: 100%; margin-top: 5px; border-radius: 2px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #ef4444; width: 100%; transition: 1s linear; }
+
+        /* OUTCOMES */
+        .outcomes { padding: 15px; background: rgba(0,0,0,0.3); margin-top: 15px; }
+        .outcome-title { font-size: 10px; color: var(--gold); text-transform: uppercase; margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .outcome-list { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+        .outcome-list::-webkit-scrollbar { display: none; }
+        .outcome-item { min-width: 45px; height: 35px; background: #1e3a8a; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 900; border: 1.5px solid rgba(255,255,255,0.2); }
+        .outcome-item.green { background: #059669; }
+        .outcome-item.red { background: #b91c1c; }
+        .outcome-tag { font-size: 6px; margin-top: -2px; }
+
+        /* BETTING GRID */
+        .betting-area { padding: 15px; flex: 1; }
+        .bet-main-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .bet-box { background: rgba(30, 41, 59, 0.8); border: 2px solid rgba(255,255,255,0.2); border-radius: 12px; padding: 15px 5px; text-align: center; position: relative; cursor: pointer; transition: 0.1s; }
+        .bet-box:active { transform: scale(0.95); }
+        .bet-box.selected { border-color: var(--gold); box-shadow: inset 0 0 10px rgba(255,193,7,0.3); }
+        .bet-label { font-size: 18px; font-weight: 900; display: block; }
+        .bet-odds { font-size: 10px; opacity: 0.7; }
+        .bet-chip-indicator { position: absolute; top: 5px; right: 5px; background: var(--gold); color: black; font-size: 9px; padding: 1px 4px; border-radius: 10px; font-weight: 900; display: none; }
+
+        .down-box { background: linear-gradient(145deg, #1e3a8a, #172554); }
+        .mid-box { background: linear-gradient(145deg, #78350f, #451a03); border-color: #f59e0b; }
+        .up-box { background: linear-gradient(145deg, #064e3b, #022c22); }
+
+        .num-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+        .num-box { background: rgba(0,0,0,0.4); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 10px 0; text-align: center; font-weight: 900; cursor: pointer; position: relative; }
+        .num-box.active { border-color: var(--gold); }
+
+        /* CHIPS */
+        .chips-row { display: flex; justify-content: space-between; padding: 15px; gap: 5px; background: rgba(0,0,0,0.5); }
+        .chip { width: 45px; height: 45px; border-radius: 50%; border: 3px dashed white; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: 0.2s; }
+        .chip:active { transform: scale(0.8); }
+        .chip.active { transform: translateY(-10px) scale(1.1); border-style: solid; box-shadow: 0 10px 20px rgba(0,0,0,0.8); }
+
+        .chip-10 { background: #3b82f6; }
+        .chip-50 { background: #ef4444; }
+        .chip-100 { background: #8b5cf6; }
+        .chip-500 { background: #10b981; }
+        .chip-1k { background: #f59e0b; }
+        .chip-5k { background: #64748b; }
+
+        /* ACTION BAR */
+        .action-bar { display: flex; gap: 10px; padding: 10px 15px 20px; background: rgba(0,0,0,0.5); }
+        .act-btn { flex: 1; height: 45px; border-radius: 10px; border: none; background: rgba(255,255,255,0.1); color: white; font-weight: 900; text-transform: uppercase; font-size: 11px; cursor: pointer; }
+        .btn-spin { background: linear-gradient(to bottom, #3b82f6, #1d4ed8); box-shadow: 0 4px 0 #1e3a8a; }
+        .btn-spin:disabled { opacity: 0.5; cursor: default; }
+
+        #lockedMsg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; display: none; align-items: center; justify-content: center; pointer-events: none; }
+        .locked-badge { background: rgba(0,0,0,0.8); border: 2px solid var(--gold); padding: 10px 20px; border-radius: 50px; font-weight: 900; color: var(--gold); display: flex; align-items: center; gap: 10px; }
+        .spin-icon { animation: rotate 2s linear infinite; }
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        #resPopup {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 30px 40px;
+            border-radius: 30px;
+            font-weight: 900;
+            font-size: 32px;
+            z-index: 2000;
+            display: none;
+            text-align: center;
+            box-shadow: 0 0 100px rgba(0,0,0,1);
+            animation: zoomIn 0.3s;
+            min-width: 280px;
+        }
+        @keyframes zoomIn { from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div style="display:flex; gap:10px; align-items:center;">
+            <div onclick="location.href='dashboard.html'"><i class="fas fa-arrow-left"></i></div>
+            <div class="logo-text">INDIAN CLASSIC<br>SPIN GAME</div>
+        </div>
+        <div class="wallet">₹<span id="balance">0.00</span></div>
+    </div>
+
+    <div class="wheel-container">
+        <div class="wheel-outer" id="wheel">
+            <img src="image/wheel.png" class="wheel-img" alt="Wheel" style="width:100%; height:100%;">
+        </div>
+        <div class="wheel-status-overlay" id="statusOverlay">
+            <i class="fa-solid fa-lock status-icon"></i>
+            <span class="status-text">BETS LOCKED</span>
+        </div>
+        <!-- Proper Teer (Arrow) Pointer -->
+        <svg class="pointer" viewBox="0 0 100 100" fill="#ffc107">
+            <path d="M50 95 L10 20 L90 20 Z" stroke="#fff" stroke-width="2" />
+        </svg>
+    </div>
+
+    <div class="timer-box">
+        <div style="font-size: 10px; color: #aaa; text-transform: uppercase; margin-bottom: 2px;">
+            <i class="far fa-clock"></i> Place your bets
+        </div>
+        <div class="timer-val"><span id="timer">0</span>s <span style="font-size: 12px; opacity: 0.7;">REMAINING</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="timerBar"></div></div>
+    </div>
+
+    <div class="outcomes">
+        <div class="outcome-title">
+            <span>Recent Outcomes</span>
+            <span>Last 10 Spins</span>
+        </div>
+        <div class="outcome-list" id="history">
+            <!-- <div class="outcome-item">5 <span class="outcome-tag">DWN</span></div> -->
+        </div>
+    </div>
+
+    <div class="betting-area">
+        <div class="bet-main-grid">
+            <div class="bet-box down-box" onclick="placeBetOn('DOWN')">
+                <span class="bet-label">2-6</span>
+                <span class="bet-odds">1:1 DOWN</span>
+                <div class="bet-chip-indicator" id="chip-DOWN">₹0</div>
+            </div>
+            <div class="bet-box mid-box" onclick="placeBetOn('MIDDLE')">
+                <span class="bet-label">7</span>
+                <span class="bet-odds">1:4 MIDDLE</span>
+                <div class="bet-chip-indicator" id="chip-MIDDLE">₹0</div>
+            </div>
+            <div class="bet-box up-box" onclick="placeBetOn('UP')">
+                <span class="bet-label">8-12</span>
+                <span class="bet-odds">1:1 UP</span>
+                <div class="bet-chip-indicator" id="chip-UP">₹0</div>
+            </div>
+        </div>
+
+        <div class="num-grid">
+            <div class="num-box" onclick="placeBetOn('2')">2 <div class="bet-chip-indicator" id="chip-2">₹0</div></div>
+            <div class="num-box" onclick="placeBetOn('3')">3 <div class="bet-chip-indicator" id="chip-3">₹0</div></div>
+            <div class="num-box" onclick="placeBetOn('4')">4 <div class="bet-chip-indicator" id="chip-4">₹0</div></div>
+            <div class="num-box" onclick="placeBetOn('5')">5 <div class="bet-chip-indicator" id="chip-5">₹0</div></div>
+            <div class="num-box" onclick="placeBetOn('6')">6 <div class="bet-chip-indicator" id="chip-6">₹0</div></div>
+            <div class="num-box" onclick="placeBetOn('8')">8 <div class="bet-chip-indicator" id="chip-8">₹0</div></div>
+            <div class="num-box" onclick="placeBetOn('9')">9 <div class="bet-chip-indicator" id="chip-9">₹0</div></div>
+            <div class="num-box" onclick="placeBetOn('10')">10 <div class="bet-chip-indicator" id="chip-10">₹0</div></div>
+            <div class="num-box" onclick="placeBetOn('11')">11 <div class="bet-chip-indicator" id="chip-11">₹0</div></div>
+            <div class="num-box" onclick="placeBetOn('12')">12 <div class="bet-chip-indicator" id="chip-12">₹0</div></div>
+        </div>
+    </div>
+
+    <div style="text-align:center; font-size: 11px; opacity: 0.8; margin-bottom: 5px;">SELECT CHIP AMOUNT</div>
+    <div class="chips-row">
+        <div class="chip chip-10 active" onclick="selectChip(10)">₹10</div>
+        <div class="chip chip-50" onclick="selectChip(50)">₹50</div>
+        <div class="chip chip-100" onclick="selectChip(100)">₹100</div>
+        <div class="chip chip-500" onclick="selectChip(500)">₹500</div>
+        <div class="chip chip-1k" onclick="selectChip(1000)">₹1k</div>
+        <div class="chip chip-5k" onclick="selectChip(5000)">₹5k</div>
+    </div>
+
+    <div class="action-bar">
+        <button class="act-btn" onclick="clearBets()"><i class="fas fa-undo"></i><br>Clear</button>
+        <button class="act-btn"><i class="fas fa-times"></i><br>Double</button>
+        <button class="act-btn"><i class="fas fa-sync"></i><br>Repeat</button>
+        <button class="act-btn btn-spin" id="spinBtn" disabled>SPIN NOW</button>
+    </div>
+
+    <div id="lockedMsg">
+        <div class="locked-badge">
+            <i class="fas fa-spinner spin-icon"></i>
+            BETS LOCKED (चक्र घूम raha hai)
+        </div>
+    </div>
+
+    <div id="resPopup"></div>
+
+    <!-- Audio Elements -->
+    <audio id="sndWheel" src="sound/wheelspin.mp3"></audio>
+    <audio id="sndTick" src="sound/fasrtick.mp3"></audio>
+    <audio id="sndWin" src="sound/win.mp3"></audio>
+    <audio id="sndLose" src="sound/lose.mp3"></audio>
+
+    <script src="js/config.js"></script>
+    <script>
+        const token = localStorage.getItem("token");
+
+        // Global Audio Unlocker
+        const unlockAudio = () => {
+            ['sndWheel', 'sndTick', 'sndWin', 'sndLose'].forEach(id => {
+                const s = document.getElementById(id);
+                if (s) {
+                    s.muted = true;
+                    s.play().then(() => { s.pause(); s.muted = false; s.currentTime = 0; }).catch(e => {});
+                }
+            });
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                const ctx = new AudioContext();
+                if (ctx.state === 'suspended') ctx.resume();
+            }
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+            document.removeEventListener('mousedown', unlockAudio);
+        };
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('touchstart', unlockAudio);
+        document.addEventListener('mousedown', unlockAudio);
+
+        let selectedChip = 10, myBets = {}, isSpinning = false, lastRoundId = null, lastTimerValue = -1;
+
+        // Initialize Audio
+        const sndWheel = document.getElementById("sndWheel");
+        const sndTick = document.getElementById("sndTick");
+
+        async function init() {
+            if (!token) { location.href = "login.html"; return; }
+            const res = await fetch(`${API_URL}/api/profile`, { headers: { authorization: token } });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById("balance").innerText = data.user.coins.toFixed(2);
+            }
+            startStateLoop();
+        }
+        init();
+
+        function selectChip(amt) {
+            selectedChip = amt;
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        async function placeBetOn(selection) {
+            if (isSpinning) return;
+            try {
+                const res = await fetch(`${API_URL}/api/game/numberspin/bet`, {
+                    method: "POST", headers: { "Content-Type": "application/json", authorization: token },
+                    body: JSON.stringify({ selection, amount: selectedChip })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    myBets[selection] = (myBets[selection] || 0) + selectedChip;
+                    const ind = document.getElementById(`chip-${selection}`);
+                    ind.innerText = `₹${myBets[selection]}`;
+                    ind.style.display = "block";
+                    fetchBalance();
+                } else alert(data.message);
+            } catch(e) {}
+        }
+
+        function clearBets() { myBets = {}; document.querySelectorAll('.bet-chip-indicator').forEach(i => i.style.display = 'none'); }
+
+        async function fetchBalance() {
+            const res = await fetch(`${API_URL}/api/profile`, { headers: { authorization: token } });
+            const data = await res.json();
+            if (data.success) document.getElementById("balance").innerText = data.user.coins.toFixed(2);
+        }
+
+        let isFetching = false;
+        function startStateLoop() {
+            setInterval(async () => {
+                if (isFetching) return;
+                isFetching = true;
+                try {
+                    const res = await fetch(`${API_URL}/api/game/numberspin/state`, { headers: { authorization: token } });
+                    const data = await res.json();
+                    if (data.success) updateUI(data);
+                } catch(e) {}
+                finally { isFetching = false; }
+            }, 500);
+        }
+
+        function updateUI(state) {
+            const timerEl = document.getElementById("timer");
+            const bar = document.getElementById("timerBar");
+            const timerValBox = document.querySelector(".timer-box");
+
+            // Only show timer if not spinning and timer > 0
+            if (state.isSpinning) {
+                timerValBox.style.opacity = "0.3";
+                timerEl.innerText = "0";
+                bar.style.width = "0%";
+            } else {
+                timerValBox.style.opacity = "1";
+                timerEl.innerText = state.timer;
+                bar.style.width = (state.timer / 15 * 100) + "%";
+            }
+
+            // Timer Sound (fasrtick.mp3)
+            if (state.timer !== lastTimerValue) {
+                if (state.timer > 0 && !state.isSpinning && state.timer <= 15) {
+                    if (sndTick) {
+                        sndTick.currentTime = 0;
+                        sndTick.play().catch(e => {});
+                    }
+                }
+                lastTimerValue = state.timer;
+            }
+
+            const statusOverlay = document.getElementById("statusOverlay");
+            if (state.isSpinning) {
+                statusOverlay.style.display = "flex";
+                if (!isSpinning) startSpinAnimation(state.history[0].result);
+            } else {
+                statusOverlay.style.display = "none";
+                // Ensure wheel stays at the last winning position when not spinning
+                if (state.history.length > 0 && !isSpinning) {
+                     const lastRes = state.history[0].result;
+                     const sections = [7, 2, 8, 3, 9, 4, 10, 5, 11, 6, 12];
+                     const sectionAngle = 360 / sections.length;
+                     const winningIndex = sections.indexOf(lastRes);
+                     const offset = -(winningIndex * sectionAngle);
+                     document.getElementById("wheel").style.transform = `rotate(${currentRotation - (currentRotation % 360) + offset}deg)`;
+                }
+
+                if (state.roundId !== lastRoundId) {
+                    if (lastRoundId !== null) {
+                        // Round changed, clear bets for next round
+                        clearBets();
+                    }
+                    lastRoundId = state.roundId;
+                }
+            }
+
+            // History
+            const histDiv = document.getElementById("history");
+            histDiv.innerHTML = state.history.map(h => {
+                let tag = "MID";
+                if (h.result <= 6) tag = "DWN";
+                else if (h.result >= 8) tag = "UP";
+                const color = h.result === 7 ? 'green' : (h.result <= 6 ? 'red' : '');
+                return `<div class="outcome-item ${color}">${h.result} <span class="outcome-tag">${tag}</span></div>`;
+            }).join('');
+        }
+
+        let currentRotation = 0; // Starts at 7 (top)
+
+        function startSpinAnimation(winningNumber) {
+            isSpinning = true;
+
+            // Stop Tick sound when spinning starts
+            if (sndTick) {
+                sndTick.pause();
+                sndTick.currentTime = 0;
+            }
+
+            // Play Wheel Spin sound
+            if (sndWheel) {
+                sndWheel.currentTime = 0;
+                sndWheel.play().catch(e => {});
+            }
+
+            const wheel = document.getElementById("wheel");
+            const sections = [7, 2, 8, 3, 9, 4, 10, 5, 11, 6, 12];
+            const sectionAngle = 360 / sections.length;
+            const winningIndex = sections.indexOf(winningNumber);
+
+            // Calculate target angle
+            const targetOffset = -(winningIndex * sectionAngle);
+            const baseRotations = 2; // Extra rotations for "teji se" feel
+
+            // Add to current rotation to keep it smooth
+            const targetRotation = currentRotation + (baseRotations * 360) + targetOffset - (currentRotation % 360);
+
+            // Speed up transition to 2s
+            wheel.style.transition = 'transform 2s cubic-bezier(0.1, 0.7, 0.1, 1)';
+            wheel.style.transform = `rotate(${targetRotation}deg)`;
+            currentRotation = targetRotation;
+
+            setTimeout(() => {
+                // Stop Wheel Spin sound
+                if (sndWheel) {
+                    sndWheel.pause();
+                    sndWheel.currentTime = 0;
+                }
+
+                const sndWin = document.getElementById("sndWin");
+                const sndLose = document.getElementById("sndLose");
+
+                // Calculate if user won
+                let totalWon = 0;
+                let betPlaced = false;
+
+                for (let key in myBets) {
+                    betPlaced = true;
+                    const amt = myBets[key];
+                    let multiplier = 0;
+
+                    if (key === 'DOWN' && winningNumber >= 2 && winningNumber <= 6) multiplier = 2;
+                    else if (key === 'MIDDLE' && winningNumber === 7) multiplier = 5;
+                    else if (key === 'UP' && winningNumber >= 8 && winningNumber <= 12) multiplier = 2;
+                    else if (key === winningNumber.toString()) multiplier = 10;
+
+                    totalWon += amt * multiplier;
+                }
+
+                if (betPlaced) {
+                    const popup = document.getElementById("resPopup");
+                    popup.style.display = "block";
+
+                    if (totalWon > 0) {
+                        popup.innerHTML = `
+                            <div style="color: #f1c40f; font-size: 40px; margin-bottom: 10px;">WIN!</div>
+                            <div style="font-size: 18px; opacity: 0.9; margin-bottom: 15px;">Result: ${winningNumber}</div>
+                            <div style="font-size: 32px; color: #fff; font-weight: 900;">₹${totalWon.toFixed(2)}</div>
+                        `;
+                        popup.style.background = "linear-gradient(135deg, #15803d 0%, #064e3b 100%)";
+                        popup.style.border = "3px solid #22c55e";
+                        if (sndWin) sndWin.play().catch(e=>{});
+                    } else {
+                        popup.innerHTML = `
+                            <div style="color: #ef4444; font-size: 40px; margin-bottom: 10px;">LOSE</div>
+                            <div style="font-size: 18px; opacity: 0.9; margin-bottom: 15px;">Result: ${winningNumber}</div>
+                            <div style="font-size: 14px; color: #fff;">Better luck next time!</div>
+                        `;
+                        popup.style.background = "linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%)";
+                        popup.style.border = "3px solid #ef4444";
+                        if (sndLose) sndLose.play().catch(e=>{});
+                    }
+
+                    setTimeout(() => {
+                        popup.style.display = "none";
+                        fetchBalance();
+                    }, 3000);
+                } else {
+                    fetchBalance();
+                }
+
+                // Reset spinning state
+                isSpinning = false;
+            }, 4500);
+        }
+    </script>
+</body>
+</html>

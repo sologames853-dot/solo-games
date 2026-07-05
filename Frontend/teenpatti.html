@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Teen Patti Solo | Solo Games</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --gold: #ffc107; --bg: #2a0a0a; --poker-blue: #24589e; --action-red: #ef4444; --action-green: #22c55e; }
+        body {
+            background-color: #2e0249;
+            background-image: radial-gradient(circle at 50% 50%, #570a88 0%, #2e0249 100%);
+            color: white; font-family: 'Roboto', sans-serif; margin: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; user-select: none;
+        }
+
+        /* LOBBY */
+        #lobby { position: fixed; inset: 0; background: radial-gradient(circle, #570a88, #2e0249); z-index: 5000; display: flex; flex-direction: column; padding: 15px; overflow: hidden; }
+        .lobby-header { text-align: center; margin: 20px 0; }
+        .lobby-title { font-size: 32px; font-weight: 900; color: var(--gold); text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 15px rgba(255,193,7,0.5); }
+
+        .table-grid {
+            display: flex;
+            gap: 20px;
+            padding: 20px 40px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .table-grid::-webkit-scrollbar { display: none; }
+
+        .table-card {
+            flex: 0 0 220px;
+            background: linear-gradient(145deg, #7c1c1c, #3d0a0a);
+            border: 2px solid #b91c1c;
+            border-radius: 25px;
+            padding: 30px 20px;
+            text-align: center;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.6);
+            scroll-snap-align: center;
+        }
+        .table-card h3 { margin: 0; font-size: 16px; color: #fca5a5; text-transform: uppercase; }
+        .table-card .boot { font-size: 36px; font-weight: 900; color: var(--gold); margin: 20px 0; text-shadow: 0 0 10px rgba(255,193,7,0.4); }
+        .table-card button {
+            background: linear-gradient(to bottom, #22c55e, #15803d);
+            color: white;
+            border: none;
+            padding: 15px 0;
+            border-radius: 50px;
+            font-weight: 900;
+            cursor: pointer;
+            width: 100%;
+            font-size: 18px;
+            box-shadow: 0 6px 0 #064e3b, 0 10px 20px rgba(0,0,0,0.3);
+            transition: 0.1s;
+        }
+        .table-card button:active { transform: translateY(3px); box-shadow: 0 3px 0 #064e3b; }
+
+        /* HEADER */
+        .game-header { position: absolute; top: 0; width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; box-sizing: border-box; z-index: 1000; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); }
+        .circle-btn { width: 36px; height: 36px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; cursor: pointer; }
+        .wallet-display { background: rgba(0,0,0,0.7); padding: 4px 12px; border-radius: 20px; border: 1px solid var(--gold); display: flex; align-items: center; gap: 6px; font-weight: 900; color: #22c55e; font-size: 14px; }
+
+        /* GAME AREA */
+        .game-area {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(circle, #5c1414, #1a0505);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            padding-bottom: 220px; /* Increased padding to push table up */
+            perspective: 1000px;
+        }
+
+        .poker-table {
+            width: 94%;
+            height: 55%; /* Reduced height to keep it compact */
+            background: var(--poker-blue);
+            border-radius: 150px;
+            position: relative;
+            box-shadow:
+                inset 0 0 100px rgba(0,0,0,0.8),
+                0 30px 60px rgba(0,0,0,0.8);
+            border: 6px solid #fcc419;
+            outline: 12px solid #1e293b;
+            transform: rotateX(20deg);
+            z-index: 10;
+        }
+
+        .dealer-box {
+            position: absolute;
+            top: 2%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 5;
+            pointer-events: none;
+        }
+        .dealer-img {
+            width: 150px; /* Smaller dealer to save space */
+            filter: drop-shadow(0 10px 20px black);
+        }
+        .poker-table::after {
+            content: "";
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 40px;
+            background: #1e293b;
+            border-radius: 0 0 100px 100px;
+            z-index: 6;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+
+        .pot-container {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 20px;
+            border-radius: 25px;
+            border: 1px solid var(--gold);
+            z-index: 20;
+        }
+        .pot-amount { font-size: 22px; font-weight: 900; color: var(--gold); }
+
+        .round-timer-box { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; text-align: center; }
+        .round-timer { font-size: 64px; font-weight: 900; color: #fff; text-shadow: 0 0 20px #f00, 0 0 40px #f00; display: none; }
+        .wait-msg { font-size: 24px; font-weight: 900; color: var(--gold); text-transform: uppercase; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 15px; display: none; }
+
+        /* SEATS */
+        .player-seat {
+            position: absolute;
+            width: 100px;
+            text-align: center;
+            z-index: 100;
+            transition: 0.5s;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .seat-me { bottom: 15%; left: 50%; transform: translateX(-50%) scale(1.1); z-index: 200; }
+        .seat-2 { left: 4%; bottom: 32%; }
+        .seat-3 { left: 12%; top: 12%; transform: scale(0.85); }
+        .seat-4 { right: 12%; top: 12%; transform: scale(0.85); }
+        .seat-5 { right: 4%; bottom: 32%; }
+
+        .avatar-group { position: relative; width: 64px; height: 64px; margin-top: 5px; display: flex; align-items: center; justify-content: center; }
+        .avatar { width: 100%; height: 100%; border-radius: 50%; border: 3px solid var(--gold); overflow: hidden; background: #333; box-shadow: 0 5px 15px rgba(0,0,0,0.6); position: relative; z-index: 2; }
+        .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .avatar-emoji { font-size: 32px; display: flex; align-items: center; justify-content: center; height: 100%; background: #222; }
+
+        .turn-timer-text {
+            position: absolute;
+            z-index: 10;
+            font-size: 24px;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 0 0 10px #000, 0 0 20px #f00;
+            pointer-events: none;
+            background: rgba(0,0,0,0.4);
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .active-turn-ring { position: absolute; inset: -5px; border: 4px solid #fde047; border-radius: 50%; opacity: 0; z-index: 1; pointer-events: none; }
+        .active-turn .active-turn-ring { opacity: 1; animation: ring-spin 2s linear infinite; }
+        @keyframes ring-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .p-name-plate { background: rgba(0,0,0,0.85); border-radius: 12px; padding: 2px 10px; border: 1px solid var(--gold); width: 85px; margin-top: 2px; }
+        .p-name { font-size: 10px; font-weight: 900; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* CARDS */
+        .cards-status { width: 100%; display: flex; flex-direction: column; align-items: center; margin-bottom: 2px; position: relative; }
+        .status-tag { background: #000; color: white; font-size: 8px; font-weight: 900; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--gold); text-transform: uppercase; margin-bottom: 2px; z-index: 10; }
+        .rank-tag { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: var(--gold); font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--gold); white-space: nowrap; z-index: 20; }
+        .packed-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            border-radius: 8px;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 950;
+            color: #ef4444;
+            text-transform: uppercase;
+            border: 2px solid #ef4444;
+        }
+
+        .mini-cards { display: flex; justify-content: center; transition: 0.3s; }
+        .m-card {
+            width: 25px; height: 35px;
+            background: white; border: 1px solid #999; border-radius: 3px;
+            margin: 0 -8px; box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column; align-items: center; justify-content: space-around;
+            font-size: 10px; font-weight: 950;
+        }
+        .m-card.back { background: #b91c1c url('https://www.transparenttextures.com/patterns/poker-qr.png'); border-color: #fff; }
+        .packed .m-card { opacity: 0.5; filter: grayscale(1); }
+        .packed .status-tag { background: #ef4444; border-color: #fff; }
+
+        /* MY HAND (Special styling for grouped view) */
+        .my-hand-grouped { display: flex; justify-content: center; align-items: center; position: relative; }
+        .card-big {
+            width: 70px; height: 100px;
+            background: white; border-radius: 8px;
+            color: black; font-weight: 950;
+            display: flex; flex-direction: column;
+            margin: 0 -15px; box-shadow: 0 10px 20px rgba(0,0,0,0.8);
+            border: 2px solid #ccc; position: relative;
+            pointer-events: auto;
+            padding: 5px;
+            box-sizing: border-box;
+            transition: 0.3s;
+        }
+        .card-big.back { background: #b91c1c url('https://www.transparenttextures.com/patterns/poker-qr.png'); border-color: #fff; }
+        .packed .card-big { opacity: 0.5; filter: grayscale(1); }
+
+        .c-corner { position: absolute; font-size: 14px; line-height: 1; }
+        .c-top { top: 4px; left: 4px; text-align: center; }
+        .c-bot { bottom: 4px; right: 4px; transform: rotate(180deg); text-align: center; }
+        .c-mid { margin: auto; font-size: 32px; }
+
+        .rank-label { position: absolute; top: -25px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); color: var(--gold); padding: 4px 15px; border-radius: 15px; font-size: 14px; font-weight: 950; border: 1.5px solid var(--gold); white-space: nowrap; box-shadow: 0 5px 15px rgba(0,0,0,0.5); z-index: 310; }
+        .see-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: linear-gradient(to bottom, #3b82f6, #1d4ed8); color: #fff; padding: 8px 20px; border-radius: 20px; font-weight: 900; font-size: 14px; border: 1.5px solid #fff; pointer-events: auto; cursor: pointer; z-index: 320; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+
+        .rank-label { position: absolute; top: -25px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); color: var(--gold); padding: 4px 15px; border-radius: 15px; font-size: 14px; font-weight: 950; border: 1.5px solid var(--gold); white-space: nowrap; box-shadow: 0 5px 15px rgba(0,0,0,0.5); z-index: 310; }
+        .see-btn { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); background: linear-gradient(to bottom, #3b82f6, #1d4ed8); color: #fff; padding: 6px 18px; border-radius: 20px; font-weight: 900; font-size: 14px; border: 1.5px solid #fff; pointer-events: auto; cursor: pointer; z-index: 320; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+
+        /* ACTION CONTROLS */
+        .controls-wrapper {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0.85));
+            border-top: 2px solid rgba(255,255,255,0.15);
+            z-index: 1000;
+            padding: 8px 0;
+            height: 100px;
+        }
+
+        .action-btns {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 10px;
+            padding: 0 12px;
+            height: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .btn-col { display: flex; flex-direction: column; gap: 6px; flex: 1; height: 100%; }
+
+        .btn-act {
+            width: 100%;
+            flex: 1;
+            border-radius: 12px;
+            border: 2px solid rgba(255,255,255,0.2);
+            font-weight: 950;
+            font-size: 13px;
+            color: white;
+            text-transform: uppercase;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: 0.1s;
+            background: rgba(255,255,255,0.1);
+            box-shadow: 0 4px 0 rgba(0,0,0,0.4);
+            overflow: hidden;
+        }
+        .btn-act:active { transform: translateY(2px); box-shadow: none; background: rgba(255,255,255,0.2); }
+
+        .btn-pack { border-color: #ef4444; color: #fff; background: linear-gradient(to bottom, #ef4444, #991b1b); }
+        .btn-side { border-color: #f59e0b; color: #fff; background: linear-gradient(to bottom, #f59e0b, #92400e); }
+        .btn-chaal { border-color: #22c55e; color: #fff; background: linear-gradient(to bottom, #22c55e, #15803d); }
+        .btn-show { border-color: #3b82f6; color: #fff; background: linear-gradient(to bottom, #3b82f6, #1d4ed8); }
+        .btn-sub { font-size: 10px; opacity: 0.9; margin-top: 2px; font-weight: 900; background: rgba(0,0,0,0.2); padding: 1px 6px; border-radius: 4px; }
+
+        .bet-stepper-side { position: absolute; right: 15px; bottom: 110px; display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 1000; }
+        .step-btn { width: 36px; height: 36px; border-radius: 50%; background: #334155; border: 1.5px solid var(--gold); color: white; font-size: 18px; font-weight: 900; cursor: pointer; box-shadow: 0 3px 0 #1e293b; display: flex; align-items: center; justify-content: center; }
+        .bet-val-box { background: rgba(0,0,0,0.8); border: 1.5px solid var(--gold); border-radius: 10px; padding: 4px 12px; min-width: 70px; text-align: center; box-shadow: 0 0 10px rgba(255,193,7,0.3); }
+        .bet-val { font-size: 14px; font-weight: 900; color: var(--gold); }
+
+        /* AVATAR SELECTOR */
+        #avatarSelector { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9000; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .avatar-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 20px; }
+        .av-opt { width: 60px; height: 60px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 30px; background: #222; }
+        .av-opt.selected { border-color: var(--gold); }
+
+        /* DEALING CARD */
+        .dealing-card { position: absolute; width: 25px; height: 35px; background: #b91c1c url('https://www.transparenttextures.com/patterns/poker-qr.png'); border: 1px solid white; border-radius: 3px; z-index: 1000; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); top: 10%; left: 50%; transform: translate(-50%, -50%); }
+
+        /* EMOJI MENU */
+        #emojiPopup { position: fixed; bottom: 150px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); border: 2px solid var(--gold); border-radius: 15px; padding: 15px; display: none; grid-template-columns: repeat(3, 1fr); gap: 15px; z-index: 8000; }
+        .emoji-item { font-size: 28px; cursor: pointer; transition: 0.2s; }
+        .emoji-item:active { transform: scale(1.2); }
+
+        /* SIDESHOW OVERLAY */
+        #sideShowOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 8000; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .side-card { background: #1e293b; padding: 25px; border-radius: 20px; border: 2px solid var(--gold); text-align: center; width: 85%; }
+
+        /* SHOWDOWN OVERLAY */
+        #showdownOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 6000; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .showdown-card-box { display: flex; gap: 20px; align-items: center; margin-top: 20px; flex-wrap: wrap; justify-content: center; }
+        .player-hand-show { text-align: center; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 20px; border: 2px solid var(--gold); box-shadow: 0 0 30px rgba(255, 193, 7, 0.2); transition: 0.5s; animation: showdownPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes showdownPop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .hand-name { color: var(--gold); font-size: 16px; font-weight: 900; margin-bottom: 10px; text-transform: uppercase; }
+        .hand-rank-text { color: #fff; font-size: 13px; font-weight: 700; margin-top: 8px; }
+        .vs-showdown { font-size: 32px; font-weight: 950; font-style: italic; color: #ef4444; text-shadow: 0 0 20px rgba(239, 68, 68, 0.5); }
+
+        .btn-small { width: 140px !important; height: 38px !important; font-size: 14px !important; margin-top: 20px !important; }
+
+        .winner-crown { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); font-size: 40px; color: var(--gold); filter: drop-shadow(0 0 10px gold); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.2); } 100% { transform: translateX(-50%) scale(1); } }
+
+        /* SIDESHOW OVERLAY */
+        #sideShowOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 8000; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .side-card { background: #1e293b; padding: 25px; border-radius: 20px; border: 2px solid var(--gold); text-align: center; width: 85%; }
+
+        /* SHOWDOWN OVERLAY */
+        #showdownOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 6000; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .showdown-card-box { display: flex; gap: 20px; align-items: center; margin-top: 20px; flex-wrap: wrap; justify-content: center; }
+        .player-hand-show { text-align: center; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 20px; border: 2px solid var(--gold); box-shadow: 0 0 30px rgba(255, 193, 7, 0.2); transition: 0.5s; animation: showdownPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes showdownPop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .hand-name { color: var(--gold); font-size: 16px; font-weight: 900; margin-bottom: 10px; text-transform: uppercase; }
+        .hand-rank-text { color: #fff; font-size: 13px; font-weight: 700; margin-top: 8px; }
+        .vs-showdown { font-size: 32px; font-weight: 950; font-style: italic; color: #ef4444; text-shadow: 0 0 20px rgba(239, 68, 68, 0.5); }
+
+        .btn-small { width: 140px !important; height: 38px !important; font-size: 14px !important; margin-top: 20px !important; }
+
+        .winner-crown { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); font-size: 40px; color: var(--gold); filter: drop-shadow(0 0 10px gold); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.2); } 100% { transform: translateX(-50%) scale(1); } }
+
+        /* RESULT */
+        #resultOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 7000; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .res-card { background: radial-gradient(circle, #7c2d12, #1a0505); padding: 40px; border-radius: 30px; border: 3px solid var(--gold); text-align: center; width: 85%; max-width: 450px; box-shadow: 0 0 60px rgba(251,191,36,0.3); }
+
+        /* SIDESHOW ANIMATION */
+        #sideshowAnimOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9000; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .sideshow-box { display: flex; gap: 40px; align-items: center; position: relative; }
+        .ss-player { text-align: center; transition: 0.5s; }
+        .ss-player.loser { filter: grayscale(0.8) brightness(0.5); }
+        .ss-name { color: var(--gold); font-weight: 900; margin-bottom: 10px; font-size: 18px; }
+        .ss-vs { font-size: 48px; font-weight: 950; color: #ef4444; text-shadow: 0 0 20px #ef4444; }
+
+        .thunder-bolt {
+            position: absolute;
+            top: -200px;
+            width: 100px;
+            height: 400px;
+            background: url('https://i.imgur.com/3YpA3k8.png') no-repeat center; /* Use a lightning bolt image or SVG */
+            background-size: contain;
+            filter: drop-shadow(0 0 20px #fff);
+            opacity: 0;
+            z-index: 100;
+            pointer-events: none;
+        }
+        @keyframes thunderStrike {
+            0% { transform: translateY(-100px) scaleY(0); opacity: 0; }
+            10% { opacity: 1; }
+            20% { transform: translateY(0) scaleY(1.2); opacity: 1; }
+            30% { opacity: 0.5; }
+            40% { opacity: 1; }
+            100% { transform: translateY(50px) scaleY(1); opacity: 0; }
+        }
+        .strike-anim { animation: thunderStrike 0.8s ease-in forwards; }
+
+        @media (max-width: 600px) {
+            .poker-table { height: 60%; width: 100%; border-radius: 100px; }
+            .card-big { width: 65px; height: 95px; font-size: 18px; }
+            .btn-act { font-size: 11px; height: 45px; }
+            .bet-stepper-side { bottom: 120px; }
+        }
+    </style>
+</head>
+<body>
+
+    <audio id="snd-bg" src="sound/teenpatti.mp3" loop></audio>
+    <audio id="snd-bet" src="https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3"></audio>
+    <audio id="snd-win" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3"></audio>
+    <audio id="snd-lose" src="https://assets.mixkit.co/active_storage/sfx/2564/2564-preview.mp3"></audio>
+    <audio id="snd-turn" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3"></audio>
+    <audio id="snd-tick" src="https://assets.mixkit.co/active_storage/sfx/2564/2564-preview.mp3"></audio>
+    <audio id="snd-show" src="https://assets.mixkit.co/active_storage/sfx/1103/1103-preview.mp3"></audio>
+
+    <div id="lobby">
+        <div style="padding: 10px;">
+            <button onclick="location.href='dashboard.html'" style="background:none; border:none; color:white; font-size: 20px; cursor:pointer;"><i class="fas fa-arrow-left"></i> BACK</button>
+        </div>
+        <div class="lobby-header">
+            <div class="lobby-title">Teen Patti Solo</div>
+            <p style="color: #fca5a5; font-weight: 700;">Select Stakes to Join</p>
+        </div>
+        <div class="table-grid">
+            <div class="table-card"><h3>Bronze</h3><div class="boot">₹1</div><button onclick="joinByBoot(1)">JOIN NOW</button></div>
+            <div class="table-card"><h3>Silver</h3><div class="boot">₹5</div><button onclick="joinByBoot(5)">JOIN NOW</button></div>
+            <div class="table-card"><h3>Gold</h3><div class="boot">₹10</div><button onclick="joinByBoot(10)">JOIN NOW</button></div>
+            <div class="table-card"><h3>Platinum</h3><div class="boot">₹50</div><button onclick="joinByBoot(50)">JOIN NOW</button></div>
+            <div class="table-card"><h3>Diamond</h3><div class="boot">₹100</div><button onclick="joinByBoot(100)">JOIN NOW</button></div>
+        </div>
+    </div>
+
+    <div class="game-header">
+        <div class="circle-btn" onclick="exitTable()" title="Exit Game"><i class="fas fa-arrow-left"></i></div>
+        <div class="wallet-display">
+            <i class="fas fa-coins" style="color:var(--gold)"></i>
+            ₹<span id="balance">0.00</span>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <div class="circle-btn" onclick="switchTable()" title="Switch Table"><i class="fas fa-random"></i></div>
+            <div class="circle-btn" onclick="openAv()" title="Select Avatar"><i class="fas fa-user-circle"></i></div>
+        </div>
+    </div>
+
+    <div class="game-area">
+        <div class="dealer-box">
+            <img src="image/deelar.jpg" class="dealer-img" alt="dealer">
+        </div>
+
+        <div class="poker-table"></div>
+        <div id="dealingContainer"></div>
+
+        <div class="pot-container">
+            <img src="https://cdn-icons-png.flaticon.com/512/2489/2489756.png" width="20">
+            <div class="pot-amount">₹<span id="potVal">0</span></div>
+        </div>
+
+        <div class="round-timer-box">
+            <div class="round-timer" id="roundTimer">7</div>
+            <div class="wait-msg" id="waitMsg">Wait for next round...</div>
+        </div>
+
+        <div id="seatsContainer"></div>
+    </div>
+
+    <div class="controls-wrapper" id="controls" style="opacity: 0.5; pointer-events: none;">
+        <div class="action-btns">
+            <div class="btn-col" id="col-left">
+                <button class="btn-act btn-pack" onclick="handleMove('PACK')">PACK</button>
+                <button class="btn-act btn-side" id="sideBtn" onclick="handleMove('SIDESHOW')">SIDE SHOW</button>
+                <button class="btn-act btn-show" id="showBtn" onclick="handleMove('SHOW')" style="display: none; background: linear-gradient(to bottom, #3b82f6, #1d4ed8); border-color: #60a5fa;">
+                    <span>SHOW</span><span class="btn-sub" id="showAmt">₹0</span>
+                </button>
+            </div>
+            <div class="btn-col" id="col-right">
+                <button class="btn-act btn-chaal" id="chaalBtn" onclick="handleMove('CHAAL')">
+                    <span>CHAAL</span><span class="btn-sub" id="chaalAmt">₹0</span>
+                </button>
+                <button class="btn-act btn-chaal" id="plusBtn" onclick="handlePlusMove()" style="background: linear-gradient(to bottom, #f59e0b, #92400e); border-color: #fbbf24;">
+                    <span>RAISE 2X</span><span class="btn-sub" id="plusAmt">₹0</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="emojiPopup">
+        <div class="emoji-item" onclick="sendEmojiTo('🌹')">🌹</div>
+        <div class="emoji-item" onclick="sendEmojiTo('😂')">😂</div>
+        <div class="emoji-item" onclick="sendEmojiTo('❤️')">❤️</div>
+        <div class="emoji-item" onclick="sendEmojiTo('🔥')">🔥</div>
+        <div class="emoji-item" onclick="sendEmojiTo('🥤')">🥤</div>
+        <div class="emoji-item" onclick="sendEmojiTo('👍')">👍</div>
+    </div>
+
+    <div id="sideShowOverlay">
+        <div class="side-card">
+            <h3 id="sideRequesterName">Player wants a Side Show</h3>
+            <div style="display:flex; gap:15px; justify-content:center; margin-top:20px;">
+                <button class="btn-act btn-chaal" onclick="respondSideShow(true)">ACCEPT</button>
+                <button class="btn-act btn-pack" onclick="respondSideShow(false)">REJECT</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="showdownOverlay">
+        <h1 style="color: var(--gold); font-size: 24px; letter-spacing: 3px; margin-bottom: 0;">SHOWDOWN</h1>
+        <div class="showdown-card-box" id="showdownContent">
+            <!-- Hands injected here -->
+        </div>
+    </div>
+
+    <div id="resultOverlay">
+        <div class="res-card">
+            <h1 id="resTitle" style="margin: 0; color: var(--gold); font-size: 28px;">YOU WIN!</h1>
+            <div id="resHand" style="display: flex; justify-content: center; gap: 8px; margin: 15px 0;"></div>
+            <div id="resAmount" style="font-size: 24px; color: #22c55e; font-weight: 900; margin-bottom: 15px;">+₹0</div>
+        </div>
+    </div>
+
+    <div id="avatarSelector">
+        <h2 style="color:var(--gold)">Select Avatar</h2>
+        <div class="avatar-grid" id="avGrid"></div>
+        <button class="btn-act btn-pack" style="width:200px; height:40px;" onclick="closeAv()">CLOSE</button>
+    </div>
+
+    <div id="sideshowAnimOverlay">
+        <div class="sideshow-box" id="ssAnimBox">
+            <!-- Animation content injected here -->
+        </div>
+        <div id="thunder" class="thunder-bolt"></div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script>
+        const token = localStorage.getItem("token");
+        let myId = "", currentTable = null, isFetching = false, lastState = "", lastTurn = "", nextBet = 0, maxBetUnit = 0, selectedTargetId = null;
+        let lastBalanceFetch = 0;
+
+        async function init() {
+            if (!token) { alert("Please login first"); location.href = "login.html"; return; }
+
+            // Webview Audio Fix: Unlock audio context
+            const unlockAudio = () => {
+                ['snd-bg', 'snd-bet', 'snd-win', 'snd-lose', 'snd-turn', 'snd-tick', 'snd-show'].forEach(id => {
+                    const s = document.getElementById(id);
+                    if (s) {
+                        const originalMuted = s.muted;
+                        s.muted = true;
+                        s.play().then(() => {
+                            s.pause();
+                            s.muted = originalMuted;
+                            s.currentTime = 0;
+                        }).catch(() => {});
+                    }
+                });
+                document.removeEventListener('click', unlockAudio);
+                document.removeEventListener('touchstart', unlockAudio);
+                document.removeEventListener('mousedown', unlockAudio);
+            };
+            document.addEventListener('click', unlockAudio);
+            document.addEventListener('touchstart', unlockAudio);
+            document.addEventListener('mousedown', unlockAudio);
+
+            try {
+                const res = await fetch(`${API_URL}/api/profile`, { headers: { authorization: token } });
+                const data = await res.json();
+                if (data.success) {
+                    myId = data.user.id;
+                    document.getElementById("balance").innerText = data.user.coins.toFixed(2);
+                }
+            } catch(e) { console.error("Init Error:", e); }
+        }
+        init();
+
+        async function joinByBoot(boot) {
+            if (!myId) await init(); if (!myId) return;
+            try {
+                // Play BG music on first interaction
+                document.getElementById('snd-bg').play().catch(e=>{});
+
+                const res = await fetch(`${API_URL}/api/teenpatti/join`, {
+                    method: "POST", headers: { "Content-Type": "application/json", authorization: token },
+                    body: JSON.stringify({ bootAmount: boot })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    currentTable = data.tableId;
+                    document.getElementById("lobby").style.display = "none";
+                    if(!window.stateInterval) window.stateInterval = setInterval(fetchState, 500);
+                    fetchBalance();
+                } else alert(data.message);
+            } catch(e) { alert("Connection Error"); }
+        }
+
+        async function switchTable() {
+            if(!confirm("Switch table?")) return;
+            const boot = currentTable ? Number(currentTable.split('_')[0]) : 1;
+
+            // 1. Leave current (Forced)
+            await fetch(`${API_URL}/api/teenpatti/leave`, { method: "POST", headers: { authorization: token } });
+
+            // 2. Clear state and show lobby briefly or just join
+            currentTable = null;
+
+            // 3. Join new table with same boot
+            joinByBoot(boot);
+        }
+
+        async function exitTable() {
+            if(!confirm("Are you sure you want to leave?")) return;
+            await fetch(`${API_URL}/api/teenpatti/leave`, { method: "POST", headers: { authorization: token } });
+            location.href = "dashboard.html";
+        }
+
+        // Remove from table when browser closes/backs
+        window.addEventListener('beforeunload', () => {
+            if (currentTable) {
+                navigator.sendBeacon(`${API_URL}/api/teenpatti/leave?token=${token}`);
+            }
+        });
+
+        async function fetchState() {
+            if(isFetching || !currentTable) return; isFetching = true;
+            try {
+                const res = await fetch(`${API_URL}/api/teenpatti/tables`, { headers: { authorization: token } });
+                const data = await res.json();
+                if (data.success) {
+                    const t = data.tables.find(x => x.id == currentTable);
+                    if (t) updateUI(t);
+                }
+
+                // Periodically sync balance (every 5 seconds)
+                if (Date.now() - lastBalanceFetch > 5000) {
+                    fetchBalance();
+                    lastBalanceFetch = Date.now();
+                }
+            } catch(e) {} finally { isFetching = false; }
+        }
+
+        function updateUI(t) {
+            if (!myId) return;
+            document.getElementById("potVal").innerText = t.pot;
+
+            const rt = document.getElementById("roundTimer");
+            const waitMsg = document.getElementById("waitMsg");
+            const me = t.players[myId];
+
+            if (t.state === 'WAITING' || t.state === 'STARTING' || t.state === 'SHOW') {
+                rt.style.display = "block";
+                rt.innerText = t.state === 'SHOW' ? `NEXT ROUND IN ${t.timer}` : t.timer;
+                if (t.state === 'SHOW') rt.style.fontSize = "24px"; else rt.style.fontSize = "64px";
+                waitMsg.style.display = "none";
+                if (t.timer > 0 && t.state !== 'SHOW') document.getElementById('snd-tick').play().catch(e=>{});
+            } else if (me && me.status === 'WAITING' && t.state !== 'PLAYING') {
+                rt.style.display = "none";
+                waitMsg.style.display = "block";
+            } else if (me && me.status === 'WAITING' && t.state === 'PLAYING') {
+                rt.style.display = "none";
+                waitMsg.style.display = "block";
+                waitMsg.innerText = "Game in progress... Waiting for next round";
+            } else {
+                rt.style.display = "none";
+                waitMsg.style.display = "none";
+                waitMsg.innerText = "Wait for next round...";
+            }
+
+            if (t.state === 'DEALING' && lastState !== 'DEALING') animateDealing(t);
+            if (t.currentTurn === myId && lastTurn !== myId) document.getElementById('snd-turn').play().catch(e=>{});
+            lastTurn = t.currentTurn;
+            maxBetUnit = t.maxBet;
+
+            const ssOverlay = document.getElementById("sideShowOverlay");
+            if (t.sideShowTarget === myId) {
+                ssOverlay.style.display = "flex";
+                const req = t.players[t.sideShowRequester];
+                document.getElementById("sideRequesterName").innerText = `${req.name} wants a Side Show`;
+            } else { ssOverlay.style.display = "none"; }
+
+            const container = document.getElementById("seatsContainer");
+            container.innerHTML = "";
+            const uids = Object.keys(t.players);
+            const myIdx = uids.indexOf(myId);
+
+            uids.forEach((uid, idx) => {
+                const p = t.players[uid];
+                let pos = (idx - myIdx + uids.length) % uids.length + 1;
+                if (uid === myId) pos = "me"; else if (pos > 5) pos = 5;
+
+                const seat = document.createElement("div");
+                seat.className = `player-seat seat-${pos} ${t.currentTurn === uid ? 'active-turn' : ''}`;
+
+                // Clicking avatar opens selector, name opens emoji popup
+                const avatarGroup = document.createElement("div");
+                avatarGroup.className = "avatar-group";
+                avatarGroup.onclick = (e) => { e.stopPropagation(); if (uid === myId) openAv(); };
+
+                const namePlate = document.createElement("div");
+                namePlate.className = "p-name-plate";
+                namePlate.onclick = (e) => { e.stopPropagation(); if (uid !== myId) openEmojiPopup(uid); };
+
+                const isShowdown = t.state === 'SHOW';
+                const status = p.status === 'PACKED' ? 'PACKED' : (p.blind && !isShowdown ? 'BLIND' : 'SEEN');
+                const showCardsOnTable = p.status !== 'WAITING' && p.status !== 'PACKED';
+
+                const seatClasses = [
+                    'player-seat',
+                    `seat-${pos}`,
+                    t.currentTurn === uid ? 'active-turn' : '',
+                    p.status === 'PACKED' ? 'packed' : ''
+                ].join(' ');
+
+                let resultLabel = "";
+                if (isShowdown && p.result) {
+                    resultLabel = `<div class="showdown-label label-${p.result.toLowerCase()}">${p.result}</div>`;
+                }
+
+                let avatarHtml = "";
+                if (p.avatar && (p.avatar.length < 5 || !p.avatar.includes('.'))) {
+                    avatarHtml = `<div class="avatar-emoji">${p.avatar}</div>`;
+                } else {
+                    const avatarUrl = p.avatar ? (p.avatar.startsWith('http') ? p.avatar : `${API_URL}/${p.avatar}`) : `https://i.pravatar.cc/100?u=${uid}`;
+                    avatarHtml = `<img src="${avatarUrl}">`;
+                }
+
+                const packedOverlay = p.status === 'PACKED' ? '<div class="packed-overlay">PACKED</div>' : '';
+
+                if (pos !== "me") {
+                    seat.className = seatClasses;
+                    seat.innerHTML = `
+                        ${resultLabel}
+                        <div class="cards-status">
+                            ${packedOverlay}
+                            ${isShowdown && p.handRank ? `<div class="rank-tag">${p.handRank}</div>` : ''}
+                            ${showCardsOnTable ? `<div class="status-tag" style="background:${status==='BLIND'?'#000':'#15803d'}">${status}</div>` : ''}
+                            ${p.status === 'PACKED' ? `<div class="status-tag">PACKED</div>` : ''}
+                            <div class="mini-cards">
+                                ${isShowdown ? renderHandIcons(p.hand) : (showCardsOnTable ? '<div class="m-card back"></div><div class="m-card back"></div><div class="m-card back"></div>' : '')}
+                            </div>
+                        </div>
+                    `;
+                    avatarGroup.innerHTML = `
+                        ${t.currentTurn === uid ? `<div class="turn-timer-text">${t.timer}</div>` : ''}
+                        <div class="active-turn-ring"></div>
+                        <div class="avatar">${avatarHtml}</div>
+                    `;
+                    namePlate.innerHTML = `<div class="p-name">${p.name}</div>`;
+                    seat.appendChild(avatarGroup);
+                    seat.appendChild(namePlate);
+                } else {
+                    const isTurn = t.currentTurn === myId && t.state === 'PLAYING' && p.status === 'ACTIVE';
+                    const isWaiting = p.status === 'WAITING';
+
+                    seat.className = seatClasses;
+                    seat.innerHTML = `
+                        ${resultLabel}
+                        <div class="my-hand-grouped" style="${isWaiting ? 'display:none' : ''}">
+                            ${packedOverlay}
+                            ${renderBigCards(p.hand, p.blind && t.state !== 'SHOW')}
+                            ${(!p.blind || isShowdown) && p.handRank ? `<div class="rank-label">${p.handRank}</div>` : ''}
+                            ${(p.blind && (t.state === 'PLAYING' || t.state === 'DEALING')) ? `<div class="see-btn" onclick="event.stopPropagation(); handleMove('SEE')">SEE</div>` : ''}
+                        </div>
+                        ${isWaiting ? '<div style="margin-bottom:20px; font-weight:900; color:var(--gold);">WAITING...</div>' : ''}
+                    `;
+                    avatarGroup.innerHTML = `
+                        ${t.currentTurn === uid ? `<div class="turn-timer-text">${t.timer}</div>` : ''}
+                        <div class="active-turn-ring"></div>
+                        <div class="avatar">${avatarHtml}</div>
+                    `;
+                    namePlate.innerHTML = `<div class="p-name">${p.name}</div>`;
+                    seat.appendChild(avatarGroup);
+                    seat.appendChild(namePlate);
+
+                    const ctrl = document.getElementById("controls");
+                    ctrl.style.opacity = isTurn ? "1" : "0.5";
+                    ctrl.style.pointerEvents = isTurn ? "auto" : "none";
+
+                    if (isTurn) {
+                        const activeCount = Object.keys(t.players).filter(id => t.players[id].status === 'ACTIVE').length;
+                        const showBtn = document.getElementById("showBtn");
+                        const sideshowBtn = document.getElementById("sideBtn");
+
+                        if (activeCount === 2) {
+                            showBtn.style.display = "flex";
+                            sideshowBtn.style.display = "none";
+                        } else {
+                            showBtn.style.display = "none";
+                            sideshowBtn.style.display = "flex";
+                        }
+
+                        if (nextBet < t.lastBet) nextBet = t.lastBet;
+                        // document.getElementById("nextBetDisplay").innerText = `₹${nextBet}`; // bet stepper removed from UI but keeping logic
+
+                        const cost = p.blind ? nextBet : nextBet * 2;
+                        document.getElementById("chaalAmt").innerText = `₹${cost}`;
+                        document.getElementById("showAmt").innerText = `₹${cost}`;
+
+                        // Show Raise 2x amount
+                        const raiseCost = p.blind ? (nextBet * 2) : (nextBet * 2 * 2);
+                        document.getElementById("plusAmt").innerText = `₹${raiseCost}`;
+                    }
+                }
+                container.appendChild(seat);
+            });
+
+            if (t.state === 'SHOW' && lastState !== 'SHOW') {
+                document.getElementById('snd-show').play().catch(e=>{});
+                showCustomShowdown(t);
+                fetchBalance();
+            }
+
+            if (t.sideShowAnimation && lastState !== 'SIDESHOW_RESOLVING') {
+                triggerSideshowAnimation(t.sideShowAnimation);
+            }
+
+            lastState = t.state;
+        }
+
+        function triggerSideshowAnimation(anim) {
+            const overlay = document.getElementById("sideshowAnimOverlay");
+            const box = document.getElementById("ssAnimBox");
+            const thunder = document.getElementById("thunder");
+
+            overlay.style.display = "flex";
+            thunder.classList.remove("strike-anim");
+
+            box.innerHTML = `
+                <div class="ss-player ${anim.loserId === anim.requester.id ? 'target-loser' : ''}" id="p-req">
+                    <div class="ss-name">${anim.requester.name}</div>
+                    <div style="display:flex; gap:10px;">${renderBigCards(anim.requester.hand, false)}</div>
+                </div>
+                <div class="ss-vs">VS</div>
+                <div class="ss-player ${anim.loserId === anim.target.id ? 'target-loser' : ''}" id="p-tar">
+                    <div class="ss-name">${anim.target.name}</div>
+                    <div style="display:flex; gap:10px;">${renderBigCards(anim.target.hand, false)}</div>
+                </div>
+            `;
+
+            // Start thunder after 1.5s
+            setTimeout(() => {
+                const loserEl = anim.loserId === anim.requester.id ? document.getElementById("p-req") : document.getElementById("p-tar");
+                const rect = loserEl.getBoundingClientRect();
+                thunder.style.left = (rect.left + rect.width / 2 - 50) + "px";
+                thunder.style.top = (rect.top - 100) + "px";
+                thunder.classList.add("strike-anim");
+
+                // Pack loser visually
+                setTimeout(() => {
+                    loserEl.classList.add("loser");
+                }, 400);
+            }, 1500);
+
+            // Close overlay after 4.5s
+            setTimeout(() => {
+                overlay.style.display = "none";
+            }, 4500);
+        }
+
+        function showCustomShowdown(t) {
+            const overlay = document.getElementById("showdownOverlay");
+            const content = document.getElementById("showdownContent");
+            overlay.style.display = "flex";
+
+            // Also update balance when showdown starts
+            fetchBalance();
+
+            const players = Object.values(t.players).filter(p => p.status === 'ACTIVE' || p.result);
+            // Sort by winner first
+            players.sort((a, b) => (a.result === 'WIN' ? -1 : 1));
+
+            // Only show top 2 participants
+            const participants = players.slice(0, 2);
+
+            content.innerHTML = participants.map((p, idx) => `
+                ${idx === 1 ? '<div class="vs-showdown">VS</div>' : ''}
+                <div class="player-hand-show" style="position:relative; border-color:${p.result==='WIN'?'var(--gold)':'rgba(255,255,255,0.1)'}; background:${p.result==='WIN'?'rgba(255,193,7,0.1)':'rgba(255,255,255,0.05)'}">
+                    ${p.result === 'WIN' ? '<div class="winner-crown">👑</div>' : ''}
+                    <div class="hand-name" style="color:${p.result==='WIN'?'var(--gold)':'#fff'}">${p.name}</div>
+                    <div style="display:flex; gap:10px;">${renderBigCards(p.hand, false)}</div>
+                    <div class="hand-rank-text">${p.handRank || ''}</div>
+                    <div style="margin-top:10px; color:${p.result==='WIN'?'var(--gold)':'#ef4444'}; font-weight:900; font-size: 20px; text-shadow: ${p.result==='WIN'?'0 0 10px gold':''}">
+                        ${p.result === 'WIN' ? 'WINNER' : 'LOSER'}
+                    </div>
+                </div>
+            `).join('');
+
+            // Auto-close showdown after 5 seconds
+            if (window.showdownTimeout) clearTimeout(window.showdownTimeout);
+            window.showdownTimeout = setTimeout(() => {
+                closeShowdown();
+            }, 5000);
+        }
+
+        function closeShowdown() {
+            document.getElementById("showdownOverlay").style.display = "none";
+            fetchBalance();
+        }
+
+        function animateDealing(t) {
+            const container = document.getElementById("dealingContainer");
+            const activeUids = Object.keys(t.players).filter(id => t.players[id].status === 'ACTIVE');
+            activeUids.forEach((uid, pIdx) => {
+                for(let i=0; i<3; i++) {
+                    setTimeout(() => {
+                        const card = document.createElement('div');
+                        card.className = 'dealing-card';
+                        container.appendChild(card);
+                        setTimeout(() => card.remove(), 600);
+                    }, (pIdx * 400) + (i * 150));
+                }
+            });
+        }
+
+        function renderBigCards(hand, hidden) {
+            if (!hand || hand.length === 0) return Array(3).fill('<div class="card-big back"></div>').join('');
+            return hand.map(c => {
+                const color = (c.suit==='♥'||c.suit==='♦') ? '#ef4444' : 'black';
+                if (hidden) return '<div class="card-big back"></div>';
+                return `
+                    <div class="card-big" style="color:${color}">
+                        <div class="c-corner c-top"><div>${c.rank}</div><div style="font-size:10px">${c.suit}</div></div>
+                        <div class="c-mid">${c.suit}</div>
+                        <div class="c-corner c-bot"><div>${c.rank}</div><div style="font-size:10px">${c.suit}</div></div>
+                    </div>`;
+            }).join('');
+        }
+
+        function renderHandIcons(hand) {
+            if (!hand || hand.length === 0) return '';
+            return hand.map(c => {
+                const color = (c.suit==='♥'||c.suit==='♦') ? '#ef4444' : 'black';
+                return `
+                    <div class="m-card" style="color:${color}">
+                        <div style="line-height:1">${c.rank}</div>
+                        <div style="font-size:12px; line-height:1">${c.suit}</div>
+                    </div>`;
+            }).join('');
+        }
+
+        function adjustBet(val) {
+            if (val > 0) {
+                nextBet = nextBet * 2;
+            } else {
+                nextBet = Math.max(nextBet / 2, 5);
+            }
+            nextBet = Math.min(nextBet, maxBetUnit);
+            document.getElementById("nextBetDisplay").innerText = `₹${nextBet}`;
+        }
+
+        async function handleMove(move) {
+            if (move === 'CHAAL' || move === 'SHOW' || move === 'SIDESHOW' || move === 'PLUS') document.getElementById('snd-bet').play().catch(e=>{});
+
+            let amountToBet = nextBet;
+            if (move === 'PLUS') {
+                amountToBet = nextBet * 2;
+                move = 'CHAAL';
+            }
+
+            const res = await fetch(`${API_URL}/api/teenpatti/move`, {
+                method: "POST", headers: { "Content-Type": "application/json", authorization: token },
+                body: JSON.stringify({ tableId: currentTable, move, amount: amountToBet })
+            });
+            const data = await res.json();
+
+            if (!data.success && data.message === "Insufficient coins") {
+                if (confirm("Insufficient Coins! Want to add cash to continue your turn?")) {
+                    location.href = "wallet.html";
+                }
+            }
+            fetchState();
+            fetchBalance();
+        }
+
+        async function handlePlusMove() {
+            handleMove('PLUS');
+        }
+
+        async function respondSideShow(accepted) {
+            await fetch(`${API_URL}/api/teenpatti/sideshow-response`, {
+                method: "POST", headers: { "Content-Type": "application/json", authorization: token },
+                body: JSON.stringify({ tableId: currentTable, accepted })
+            });
+            fetchState();
+            fetchBalance();
+        }
+
+        function openEmojiPopup(targetUid) {
+            selectedTargetId = targetUid;
+            document.getElementById("emojiPopup").style.display = "grid";
+        }
+        function sendEmojiTo(e) {
+            console.log(`Emoji ${e} sent to ${selectedTargetId}`);
+            document.getElementById("emojiPopup").style.display = "none";
+            alert(`Sent ${e} to player!`);
+        }
+
+        function showResult(t) {
+            const overlay = document.getElementById("resultOverlay");
+            overlay.style.display = "flex";
+            const me = t.players[myId];
+
+            document.getElementById("resTitle").innerText = me.result === 'WIN' ? "YOU WIN!" : "YOU LOSE";
+            document.getElementById("resAmount").innerText = me.result === 'WIN' ? `+₹${me.winAmount}` : "Better luck next time!";
+
+            // Show hands face to face (Winner vs Runner-up/Loser)
+            let handsHtml = "";
+            const winners = Object.keys(t.players).filter(uid => t.players[uid].result === 'WIN');
+            const losers = Object.keys(t.players).filter(uid => t.players[uid].result === 'LOSE' && t.players[uid].hand && t.players[uid].hand.length > 0);
+
+            // Only take top 2 for face-to-face
+            const displayUids = [...winners, ...losers].slice(0, 2);
+
+            displayUids.forEach((uid, idx) => {
+                const p = t.players[uid];
+                const vsText = idx === 1 ? '<div style="font-size:24px; color:#fff; margin: 10px 0;">VS</div>' : '';
+                handsHtml += `
+                    ${vsText}
+                    <div style="margin: 5px 0; display: flex; flex-direction: column; align-items: center;">
+                        <div style="font-size:14px; color:var(--gold); font-weight:900; margin-bottom:5px;">${p.name} ${p.result === 'WIN' ? '🏆' : ''}</div>
+                        <div style="display:flex; justify-content:center; gap:5px;">${renderBigCards(p.hand, false)}</div>
+                        <div style="font-size:12px; color:#fff; margin-top:3px; font-weight:700;">${p.handRank || ''}</div>
+                    </div>
+                `;
+            });
+
+            document.getElementById("resHand").innerHTML = handsHtml;
+            document.getElementById("resHand").style.display = "flex";
+            document.getElementById("resHand").style.flexDirection = "column";
+            document.getElementById("resHand").style.alignItems = "center";
+            document.getElementById("resHand").style.maxHeight = "400px";
+            document.getElementById("resHand").style.overflowY = "auto";
+
+            if (me.result === 'WIN') document.getElementById('snd-win').play().catch(e=>{});
+            else document.getElementById('snd-lose').play().catch(e=>{});
+
+            fetchBalance();
+
+            // Auto-close result after 5 seconds
+            setTimeout(() => {
+                closeRes();
+            }, 5000);
+        }
+        function closeRes() { document.getElementById("resultOverlay").style.display = "none"; fetchBalance(); }
+
+        async function fetchBalance() {
+            try {
+                const res = await fetch(`${API_URL}/api/profile`, { headers: { authorization: token } });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById("balance").innerText = data.user.coins.toFixed(2);
+                    window.currentUser = data.user;
+                }
+            } catch(e) {}
+        }
+
+        const emojis = ["😎", "🤠", "🤑", "🤡", "🤖", "👻", "🔥", "💎", "🃏", "🎴", "🦁", "🐉", "🤴", "👸", "🦸", "🥷"];
+        function openAv() {
+            const grid = document.getElementById("avGrid");
+            grid.innerHTML = emojis.map(e => `<div class="av-opt" onclick="setAv('${e}')">${e}</div>`).join('');
+            document.getElementById("avatarSelector").style.display = "flex";
+        }
+        function closeAv() { document.getElementById("avatarSelector").style.display = "none"; }
+        async function setAv(emoji) {
+            try {
+                const res = await fetch(`${API_URL}/api/profile/update`, {
+                    method: "POST", headers: { "Content-Type": "application/json", authorization: token },
+                    body: JSON.stringify({ avatar: emoji })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert("Avatar updated!");
+                    closeAv();
+                    fetchState();
+                }
+            } catch(e) { console.error(e); }
+        }
+    </script>
+</body>
+</html>

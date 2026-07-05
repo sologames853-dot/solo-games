@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lucky Draw Royale | Solo Games</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --gold: #f1c40f;
+            --red: #ef4444;
+        }
+        .payout-card.selected { border-color: var(--gold); background: rgba(241, 196, 15, 0.15); box-shadow: 0 0 15px rgba(241, 196, 15, 0.3); }
+
+        body {
+            background-color: #2e0249;
+            background-image: radial-gradient(circle at 50% 50%, #570a88 0%, #2e0249 100%);
+            background-attachment: fixed;
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 10px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .balance-box {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px 15px;
+            border-radius: 20px;
+            color: var(--gold);
+            font-weight: 900;
+            border: 1px solid rgba(241, 196, 15, 0.2);
+        }
+
+        .slot-container {
+            background: linear-gradient(180deg, #2c3e50 0%, #000000 100%);
+            padding: 30px;
+            border-radius: 40px;
+            border: 6px solid #f1c40f;
+            box-shadow: 0 0 40px rgba(241, 196, 15, 0.4), inset 0 0 20px rgba(0,0,0,0.8);
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .slot-window {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            background: #111;
+            padding: 15px;
+            border-radius: 15px;
+            border: 2px solid #444;
+            overflow: hidden;
+        }
+
+        .digit-reel {
+            width: 80px;
+            height: 110px;
+            background: white;
+            color: #000;
+            font-size: 80px;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .timer-display {
+            font-size: 32px;
+            font-weight: 900;
+            color: var(--gold);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .payout-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin: 15px 0;
+        }
+        .payout-card {
+            background: rgba(0,0,0,0.3);
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            border: 1px solid #333;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .payout-card b { color: #f1c40f; display: block; font-size: 14px; }
+        .payout-card.selected { border-color: var(--gold); background: rgba(241, 196, 15, 0.15); box-shadow: 0 0 15px rgba(241, 196, 15, 0.3); }
+
+        .active-bets-container {
+            background: rgba(0,0,0,0.4);
+            border-radius: 15px;
+            padding: 15px;
+            margin: 15px 0;
+            border: 1px solid #333;
+            text-align: left;
+        }
+        .active-bet-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 13px;
+        }
+
+        .bet-input-box {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 20px;
+            margin-top: 15px;
+            border: 1px solid #334155;
+        }
+        .input-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .input-row input { background: #000; border: 2px solid #334155; color: var(--gold); padding: 12px; width: 120px; text-align: center; border-radius: 12px; font-size: 24px; font-weight: 900; }
+
+        .btn-bet { background: #22c55e; color: white; width: 100%; height: 55px; border: none; border-radius: 15px; font-weight: 900; font-size: 18px; cursor: pointer; box-shadow: 0 4px 0 #15803d; text-transform: uppercase; }
+        .btn-bet:disabled { opacity: 0.5; background: #444; box-shadow: none; }
+
+        .history-card {
+            background: #151518;
+            border-radius: 20px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: left;
+            border: 1px solid #222;
+        }
+        .hist-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #222;
+            font-weight: 800;
+        }
+        .win-badge { color: #2ecc71; }
+
+        @keyframes shake {
+            0% { transform: translateY(0); }
+            25% { transform: translateY(-5px); }
+            50% { transform: translateY(5px); }
+            75% { transform: translateY(-2px); }
+            100% { transform: translateY(0); }
+        }
+        .rolling { animation: shake 0.1s infinite; }
+
+        #resPopup {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 30px 50px;
+            border-radius: 30px;
+            font-weight: 900;
+            font-size: 32px;
+            z-index: 1000;
+            display: none;
+            text-align: center;
+            box-shadow: 0 0 100px rgba(0,0,0,1);
+            animation: zoomIn 0.3s;
+        }
+        @keyframes zoomIn { from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } }
+    </style>
+</head>
+<body>
+    <div id="resPopup"></div>
+    <div class="header">
+        <button onclick="location.href='dashboard.html'" style="background:none; border:none; color:white; font-size: 24px;"><i class="fas fa-arrow-left"></i></button>
+        <div class="balance-box">₹ <span id="balance">0.00</span></div>
+    </div>
+
+    <div class="container" style="max-width: 500px; margin: 0 auto; text-align: center;">
+        <div class="timer-display" id="timer">00:20</div>
+
+        <div class="slot-container">
+            <div class="slot-window">
+                <div class="digit-reel" id="d1">7</div>
+                <div class="digit-reel" id="d2">7</div>
+                <div class="digit-reel" id="d3">7</div>
+            </div>
+        </div>
+
+        <div class="payout-grid">
+            <div class="payout-card" id="card-ODD" onclick="selectPrediction('ODD')"><b>1.9x</b> SUM ODD</div>
+            <div class="payout-card" id="card-EVEN" onclick="selectPrediction('EVEN')"><b>1.9x</b> SUM EVEN</div>
+            <div class="payout-card" id="card-PAIR" onclick="selectPrediction('PAIR')"><b>2.5x</b> ANY PAIR</div>
+            <div class="payout-card" id="card-TRIPLE" onclick="selectPrediction('TRIPLE')"><b>50x</b> ANY TRIPLE</div>
+            <div class="payout-card" id="card-JACKPOT" onclick="selectPrediction('JACKPOT')" style="grid-column: span 2;"><b>150x</b> 777 JACKPOT</div>
+        </div>
+
+        <div id="activeBets" class="active-bets-container" style="display: none;">
+            <div style="font-weight: 800; color: var(--gold); margin-bottom: 8px;">ACTIVE BETS</div>
+            <div id="activeBetsList"></div>
+        </div>
+
+        <div class="bet-input-box">
+            <div class="input-row">
+                <span style="font-weight: 800;">Bet Amount</span>
+                <input type="number" id="betAmount" value="10" min="10">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-bet" id="betBtn" onclick="placeBet()" style="flex: 2;">PLACE BET</button>
+                <button class="btn-bet" id="cancelBtn" onclick="cancelLastBet()" style="flex: 1; background: #ef4444; box-shadow: 0 4px 0 #991b1b;">CANCEL</button>
+            </div>
+        </div>
+
+        <div class="history-card">
+            <h4 style="margin-bottom: 10px; opacity: 0.7;"><i class="fas fa-history"></i> RECENT DRAWS</h4>
+            <div id="history"></div>
+        </div>
+    </div>
+
+    <audio id="sndSpin" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
+    <audio id="sndWin" src="https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3"></audio>
+    <audio id="sndTick" src="sound/fasrtick.mp3"></audio>
+
+    <script src="js/config.js"></script>
+    <script>
+        const token = localStorage.getItem("token");
+
+        // Global Audio Unlocker
+        const unlockAudio = () => {
+            ['sndTick', 'sndSpin', 'sndWin'].forEach(id => {
+                const s = document.getElementById(id);
+                if (s) {
+                    s.muted = true;
+                    s.play().then(() => { s.pause(); s.muted = false; s.currentTime = 0; }).catch(e => {});
+                }
+            });
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                const ctx = new AudioContext();
+                if (ctx.state === 'suspended') ctx.resume();
+            }
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+            document.removeEventListener('mousedown', unlockAudio);
+        };
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('touchstart', unlockAudio);
+        document.addEventListener('mousedown', unlockAudio);
+
+        let isRolling = false;
+        let lastRoundId = null;
+        let myCurrentBets = [];
+        let selectedPrediction = 'ODD';
+        let lastTimerValue = -1;
+        let canFetchState = true;
+
+        // Initialize Audio
+        const sndTick = document.getElementById("sndTick");
+        const sndSpin = document.getElementById("sndSpin");
+        const sndWin = document.getElementById("sndWin");
+
+        function selectPrediction(p) {
+            selectedPrediction = p;
+            document.querySelectorAll('.payout-card').forEach(c => c.classList.remove('selected'));
+            document.getElementById(`card-${p}`).classList.add('selected');
+        }
+        selectPrediction('ODD');
+
+        let isFetching = false;
+        async function fetchState() {
+            if (!canFetchState || isFetching) return;
+            isFetching = true;
+            try {
+                const res = await fetch(`${API_URL}/api/game/luckydraw/state`, { headers: { authorization: token } });
+                const data = await res.json();
+                if (data.success) {
+                    const secs = data.timer;
+                    // ... rest of logic
+
+                    if (data.isResolving) {
+                        startRolling();
+                        document.getElementById("timer").innerText = "ROLLING...";
+                        document.getElementById("timer").style.color = "#ef4444";
+                        document.getElementById("betBtn").disabled = true;
+                        document.getElementById("cancelBtn").disabled = true;
+                        document.getElementById("betBtn").innerText = "DRAWING...";
+                    } else {
+                        document.getElementById("timer").innerText = `Next Draw: ${secs}s`;
+                        if(secs < 4) document.getElementById("timer").style.color = "#ef4444";
+                        else document.getElementById("timer").style.color = "var(--gold)";
+
+                        if (isRolling) {
+                            stopRolling(data.history[0]?.result || "777");
+                        }
+                        document.getElementById("betBtn").disabled = false;
+                        document.getElementById("cancelBtn").disabled = false;
+                        document.getElementById("betBtn").innerText = "PLACE BET";
+                    }
+
+                    // Timer Sound (fasrtick.mp3)
+                    if (secs !== lastTimerValue && !data.isResolving) {
+                        if (secs > 0 && secs <= 10) {
+                            if (sndTick) {
+                                sndTick.currentTime = 0;
+                                sndTick.play().catch(e => {});
+                            }
+                        } else if (secs === 0) {
+                            if (sndTick) {
+                                sndTick.pause();
+                                sndTick.currentTime = 0;
+                            }
+                        }
+                        lastTimerValue = secs;
+                    }
+
+                    if (data.history && data.history.length > 0) {
+                        const last = data.history[0];
+                        if (last.roundId !== lastRoundId) {
+                            if (lastRoundId !== null && myCurrentBets.length > 0) {
+                                canFetchState = false;
+                                checkWin(last);
+                                myCurrentBets = [];
+                                renderActiveBets();
+                            }
+                            lastRoundId = last.roundId;
+                        }
+                    }
+                    renderHistory(data.history);
+                }
+            } catch (e) { }
+            finally { isFetching = false; }
+        }
+
+        function checkWin(last) {
+            let totalWon = 0;
+            let count = 0;
+
+            const digits = last.result.split('').map(Number);
+            const sum = digits.reduce((a, b) => a + b, 0);
+            const isOdd = sum % 2 !== 0;
+            const counts = {};
+            digits.forEach(d => counts[d] = (counts[d] || 0) + 1);
+            const maxC = Math.max(...Object.values(counts));
+            const hasT = maxC === 3;
+            const hasP = maxC >= 2;
+
+            for(let bet of myCurrentBets) {
+                let win = false;
+                let mult = 0;
+                if (bet.prediction === 'ODD' && isOdd) { win = true; mult = 1.9; }
+                else if (bet.prediction === 'EVEN' && !isOdd) { win = true; mult = 1.9; }
+                else if (bet.prediction === 'PAIR' && hasP) { win = true; mult = 2.5; }
+                else if (bet.prediction === 'TRIPLE' && hasT) { win = true; mult = 50; }
+                else if (bet.prediction === 'JACKPOT' && last.result === "777") { win = true; mult = 150; }
+                else if (bet.prediction === last.result) { win = true; mult = 100; }
+
+                if (win) {
+                    totalWon += bet.amount * mult;
+                    count++;
+                }
+            }
+
+            const msg = document.getElementById("resPopup");
+            msg.style.display = "block";
+
+            if (count > 0) {
+                msg.innerHTML = `<div style=\"font-size: 20px; opacity:0.8;\">RESULT: ${last.result}</div><div>WIN! ₹${totalWon.toFixed(2)}</div>`;
+                msg.style.background = "rgba(34, 197, 94, 0.95)";
+                new Audio('sound/win.mp3').play().catch(e=>{});
+            } else {
+                msg.innerHTML = `<div style=\"font-size: 20px; opacity:0.8;\">RESULT: ${last.result}</div><div>LOSE</div>`;
+                msg.style.background = "rgba(239, 68, 68, 0.95)";
+                new Audio('sound/lose.mp3').play().catch(e=>{});
+            }
+            setTimeout(() => {
+                msg.style.display = "none";
+                fetchBalance();
+                // Resume game logic after popup closes
+                canFetchState = true;
+            }, 1500);
+        }
+
+        function startRolling() {
+            if (isRolling) return;
+            isRolling = true;
+            document.getElementById("d1").classList.add("rolling");
+            document.getElementById("d2").classList.add("rolling");
+            document.getElementById("d3").classList.add("rolling");
+            document.getElementById("sndSpin").play().catch(e=>{});
+
+            const rollInt = setInterval(() => {
+                if (!isRolling) { clearInterval(rollInt); return; }
+                document.getElementById("d1").innerText = Math.floor(Math.random()*10);
+                document.getElementById("d2").innerText = Math.floor(Math.random()*10);
+                document.getElementById("d3").innerText = Math.floor(Math.random()*10);
+            }, 100);
+        }
+
+        function stopRolling(res) {
+            isRolling = false;
+            document.getElementById("d1").classList.remove("rolling");
+            document.getElementById("d2").classList.remove("rolling");
+            document.getElementById("d3").classList.remove("rolling");
+            document.getElementById("d1").innerText = res[0];
+            document.getElementById("d2").innerText = res[1];
+            document.getElementById("d3").innerText = res[2];
+            fetchBalance();
+        }
+
+        async function placeBet() {
+            const amount = parseInt(document.getElementById("betAmount").value);
+            if (amount < 10) return alert("Min bet is 10");
+
+            const res = await fetch(`${API_URL}/api/game/luckydraw/bet`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", authorization: token },
+                body: JSON.stringify({ amount, selection: selectedPrediction })
+            });
+            const data = await res.json();
+            if (data.success) {
+                myCurrentBets.push({ prediction: selectedPrediction, amount });
+                renderActiveBets();
+                fetchBalance();
+            } else alert(data.message);
+        }
+
+        async function cancelLastBet() {
+            const res = await fetch(`${API_URL}/api/game/luckydraw/cancel`, {
+                method: "POST",
+                headers: { authorization: token }
+            });
+            const data = await res.json();
+            if (data.success) {
+                myCurrentBets.pop();
+                renderActiveBets();
+                fetchBalance();
+                alert("Last bet cancelled");
+            } else alert(data.message);
+        }
+
+        function renderActiveBets() {
+            const container = document.getElementById("activeBets");
+            const list = document.getElementById("activeBetsList");
+            if (myCurrentBets.length === 0) {
+                container.style.display = "none";
+                return;
+            }
+            container.style.display = "block";
+            list.innerHTML = myCurrentBets.map(b => `
+                <div class="active-bet-item">
+                    <span>${b.prediction}</span>
+                    <span style="color: var(--gold); font-weight: 800;">₹${b.amount}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderHistory(h) {
+            document.getElementById("history").innerHTML = h.slice(0, 10).map(x => `
+                <div class="hist-item">
+                    <span>Round #${x.roundId.toString().slice(-4)}</span>
+                    <span class="win-badge">${x.result}</span>
+                </div>
+            `).join('');
+        }
+
+        async function fetchBalance() {
+            const res = await fetch(`${API_URL}/api/profile`, { headers: { authorization: token } });
+            const data = await res.json();
+            if (data.success) document.getElementById("balance").innerText = data.user.coins.toFixed(2);
+        }
+
+        setInterval(fetchState, 500);
+        fetchBalance();
+    </script>
+</body>
+</html>

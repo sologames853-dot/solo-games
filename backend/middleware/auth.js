@@ -1,0 +1,35 @@
+require("dotenv").config();
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
+
+const SECRET = process.env.JWT_SECRET;
+if (!SECRET) {
+    console.error("❌ JWT_SECRET is not defined in .env file");
+}
+
+module.exports = async (req, res, next) => {
+    try {
+        const token = req.headers.authorization;
+        if (!token) {
+            console.log("Auth Middleware: Token Missing");
+            return res.status(401).json({
+                success: false,
+                message: "Token Missing"
+            });
+        }
+
+        const decoded = jwt.verify(token, SECRET);
+        req.user = decoded;
+
+        // Async update last_seen without blocking
+        User.findByIdAndUpdate(decoded.id, { last_seen: new Date() }).catch(e => {});
+
+        next();
+    } catch (error) {
+        console.error("Auth Middleware: Invalid Token Error:", error.message);
+        return res.status(401).json({
+            success: false,
+            message: "Invalid Token"
+        });
+    }
+};

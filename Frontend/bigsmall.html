@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Big Small Royale | Solo Games</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --win-green: #28a745;
+            --win-red: #ef4444;
+            --gold: #f1c40f;
+            --blue: #3498db;
+        }
+
+        body {
+            background-color: #2e0249;
+            background-image: radial-gradient(circle at 50% 50%, #570a88 0%, #2e0249 100%);
+            background-attachment: fixed;
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 15px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .balance-box {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px 20px;
+            border-radius: 25px;
+            color: var(--gold);
+            font-weight: 900;
+            font-size: 18px;
+            border: 1px solid rgba(241, 196, 15, 0.3);
+        }
+
+        .timer-card {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 20px;
+            text-align: center;
+            margin: 20px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid #334155;
+        }
+        #timer { font-size: 40px; font-weight: 900; color: var(--gold); letter-spacing: 2px; }
+
+        .dice-display {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 25px;
+            perspective: 1000px;
+        }
+        .die {
+            width: 70px; height: 70px;
+            background: white; color: black;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 32px; font-weight: 900;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.4), inset 0 0 10px rgba(0,0,0,0.1);
+            transform: rotateZ(5deg);
+            transition: 0.3s;
+        }
+        @keyframes diceRoll {
+            0% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(90deg) scale(1.1); }
+            50% { transform: rotate(180deg) scale(1); }
+            75% { transform: rotate(270deg) scale(1.1); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+        .rolling-die { animation: diceRoll 0.15s infinite; }
+
+        .prediction-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+        .pred-btn {
+            background: #1e293b;
+            border: 2px solid #334155;
+            color: white;
+            padding: 15px 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .pred-btn.selected {
+            border-color: var(--gold);
+            background: rgba(241, 196, 15, 0.1);
+            transform: scale(0.95);
+            box-shadow: 0 0 20px rgba(241, 196, 15, 0.2);
+        }
+        .pred-btn h3 { margin: 0; font-size: 20px; font-weight: 900; }
+        .pred-btn span { font-size: 11px; opacity: 0.6; font-weight: bold; }
+        .pred-btn .mult { color: var(--gold); font-size: 13px; }
+
+        .btn-small { border-left: 5px solid var(--win-red); }
+        .btn-big { border-left: 5px solid var(--blue); }
+        .btn-triple { border-left: 5px solid var(--gold); }
+
+        .bet-input-card {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #334155;
+        }
+        .input-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        .input-group input {
+            background: #000;
+            border: 2px solid #334155;
+            color: var(--gold);
+            padding: 12px;
+            width: 120px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 22px;
+            font-weight: 900;
+        }
+
+        .quick-amounts {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        .amt-btn {
+            background: #334155;
+            border: none;
+            color: white;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .active-bets-container {
+            background: rgba(0,0,0,0.4);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+        .active-bet-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 13px;
+        }
+
+        .action-row { display: flex; gap: 10px; }
+        .btn-main {
+            flex: 1;
+            height: 60px;
+            border-radius: 15px;
+            border: none;
+            font-weight: 900;
+            font-size: 18px;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        .btn-confirm { background: var(--win-green); color: white; box-shadow: 0 4px 0 #1e7e34; }
+        .btn-cancel { background: #444; color: white; display: none; }
+
+        .res-overlay {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 40px;
+            border-radius: 20px;
+            font-weight: 900;
+            font-size: 32px;
+            z-index: 1000;
+            display: none;
+            text-align: center;
+            box-shadow: 0 0 100px rgba(0,0,0,1);
+            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes pop { from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } }
+
+        .history-list {
+            margin-top: 25px;
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+        .hist-circle {
+            min-width: 40px; height: 40px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 900;
+            color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .bg-b { background: var(--blue); }
+        .bg-s { background: var(--win-red); }
+        .bg-t { background: var(--gold); color: black; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button onclick="location.href='dashboard.html'" style="background:none; border:none; color:white; font-size: 24px;"><i class="fas fa-arrow-left"></i></button>
+        <div class="balance-box">₹ <span id="balance">0.00</span></div>
+    </div>
+
+    <div class="timer-card">
+        <div style="font-size: 11px; opacity: 0.6; font-weight: 800; margin-bottom: 5px; text-transform: uppercase;">Time Remaining</div>
+        <div id="timer">00:20</div>
+    </div>
+
+    <div class="dice-display" id="diceBox">
+        <div class="die">?</div>
+        <div class="die">?</div>
+        <div class="die">?</div>
+    </div>
+
+    <div class="prediction-section">
+        <div class="pred-btn btn-small" id="pred-SMALL" onclick="selectPred('SMALL')">
+            <h3>SMALL</h3>
+            <span>3 - 10</span>
+            <span class="mult">1.95x</span>
+        </div>
+        <div class="pred-btn btn-triple" id="pred-TRIPLE" onclick="selectPred('TRIPLE')">
+            <h3>TRIPLE</h3>
+            <span>Any 3 Same</span>
+            <span class="mult">24x</span>
+        </div>
+        <div class="pred-btn btn-big" id="pred-BIG" onclick="selectPred('BIG')">
+            <h3>BIG</h3>
+            <span>11 - 18</span>
+            <span class="mult">1.95x</span>
+        </div>
+    </div>
+
+    <div class="bet-input-card">
+        <div class="input-group">
+            <span style="font-weight: 800;">Amount</span>
+            <input type="number" id="betAmount" value="100" min="10" max="5000">
+        </div>
+        <div class="quick-amounts">
+            <button class="amt-btn" onclick="setAmt(100)">100</button>
+            <button class="amt-btn" onclick="setAmt(500)">500</button>
+            <button class="amt-btn" onclick="setAmt(1000)">1000</button>
+            <button class="amt-btn" onclick="setAmt(5000)">5000</button>
+        </div>
+        <div class="action-row">
+            <button id="cancelBtn" class="btn-main btn-cancel" style="display: block; background: #ef4444; box-shadow: 0 4px 0 #991b1b;" onclick="cancelLastBet()">CANCEL LAST</button>
+            <button id="confirmBtn" class="btn-main btn-confirm" onclick="placeBet()">PLACE BET</button>
+        </div>
+    </div>
+
+    <div id="activeBets" class="active-bets-container" style="display: none;">
+        <div style="font-weight: 800; color: var(--gold); margin-bottom: 8px;">ACTIVE BETS</div>
+        <div id="activeBetsList"></div>
+    </div>
+
+    <div class="res-overlay" id="resultBox"></div>
+
+    <div style="font-weight: 800; font-size: 14px; margin-top: 10px; opacity: 0.7;">RECENT RESULTS</div>
+    <div class="history-list" id="history"></div>
+
+    <audio id="sndDice" src="sound/dice.mp3"></audio>
+    <audio id="sndTick" src="sound/fasrtick.mp3"></audio>
+    <audio id="sndWin" src="sound/win.mp3"></audio>
+    <audio id="sndLose" src="sound/lose.mp3"></audio>
+
+    <script src="js/config.js"></script>
+    <script>
+        const token = localStorage.getItem("token");
+
+        // Global Audio Unlocker
+        const unlockAudio = () => {
+            ['sndDice', 'sndTick', 'sndWin', 'sndLose'].forEach(id => {
+                const s = document.getElementById(id);
+                if (s) {
+                    s.muted = true;
+                    s.play().then(() => { s.pause(); s.muted = false; s.currentTime = 0; }).catch(e => {});
+                }
+            });
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                const ctx = new AudioContext();
+                if (ctx.state === 'suspended') ctx.resume();
+            }
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+            document.removeEventListener('mousedown', unlockAudio);
+        };
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('touchstart', unlockAudio);
+        document.addEventListener('mousedown', unlockAudio);
+
+        let selectedValue = null;
+        let myCurrentBets = [];
+        let lastRoundId = null;
+        let lastTimerValue = -1;
+        let isDicePlaying = false;
+
+        // Initialize Audio
+        const sndDice = document.getElementById("sndDice");
+        const sndTick = document.getElementById("sndTick");
+        const sndWin = document.getElementById("sndWin");
+        const sndLose = document.getElementById("sndLose");
+
+        let isFetching = false;
+        async function fetchState() {
+            if (isFetching) return;
+            isFetching = true;
+            try {
+                const res = await fetch(`${API_URL}/api/game/bigsmall/state`, { headers: { authorization: token } });
+                const data = await res.json();
+                if (data.success) updateUI(data);
+            } catch (e) {}
+            finally { isFetching = false; }
+        }
+
+        function updateUI(data) {
+            const secs = data.timer;
+            document.getElementById("timer").innerText = `00:${secs.toString().padStart(2, '0')}`;
+            if(secs < 4) document.getElementById("timer").style.color = "#ef4444";
+            else document.getElementById("timer").style.color = "var(--gold)";
+
+            // Timer Sound (fasrtick.mp3)
+            if (secs !== lastTimerValue) {
+                if (secs > 0 && secs <= 10) {
+                    if (sndTick) {
+                        sndTick.currentTime = 0;
+                        sndTick.play().catch(e => {});
+                    }
+                } else if (secs === 0) {
+                    if (sndTick) {
+                        sndTick.pause();
+                        sndTick.currentTime = 0;
+                    }
+                }
+                lastTimerValue = secs;
+            }
+
+            const confirmBtn = document.getElementById("confirmBtn");
+            const cancelBtn = document.getElementById("cancelBtn");
+            const dice = document.querySelectorAll(".die");
+
+            if (data.timer < 1) {
+                confirmBtn.disabled = true;
+                confirmBtn.innerText = "WAITING...";
+                cancelBtn.disabled = true;
+
+                // Only start rolling if not already playing dice/showing result
+                if (!isDicePlaying) {
+                    dice.forEach(d => d.classList.add("rolling-die"));
+                    isDicePlaying = true;
+                    if(sndDice) {
+                        sndDice.currentTime = 0;
+                        sndDice.play().catch(e=>{});
+                    }
+                }
+
+                // Show random values during roll animation
+                if (data.timer === 0) {
+                    dice.forEach(d => {
+                        if (d.classList.contains("rolling-die")) {
+                            d.innerText = Math.floor(Math.random() * 6) + 1;
+                        }
+                    });
+                }
+            } else {
+                isDicePlaying = false;
+                dice.forEach(d => d.classList.remove("rolling-die"));
+                confirmBtn.disabled = false;
+                confirmBtn.innerText = "PLACE BET";
+                cancelBtn.disabled = false;
+            }
+
+            if (data.history && data.history.length > 0) {
+                const last = data.history[0];
+                if (last.roundId !== lastRoundId) {
+                    if (lastRoundId !== null && myCurrentBets.length > 0) {
+                        checkWin(last);
+                        myCurrentBets = [];
+                        renderActiveBets();
+                    }
+                    lastRoundId = last.roundId;
+                    renderResult(last);
+                    fetchBalance();
+                }
+                renderHistory(data.history);
+            }
+        }
+
+        function selectPred(val) {
+            selectedValue = val;
+            document.querySelectorAll(".pred-btn").forEach(b => b.classList.remove("selected"));
+            document.getElementById(`pred-${val}`).classList.add("selected");
+        }
+
+        async function placeBet() {
+            if (!selectedValue) return alert("Select BIG, SMALL or TRIPLE");
+            const amount = parseInt(document.getElementById("betAmount").value);
+            if (amount < 10 || amount > 5000) return alert("Bet must be between 10 and 5000");
+
+            const res = await fetch(`${API_URL}/api/game/bigsmall/bet`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", authorization: token },
+                body: JSON.stringify({ prediction: selectedValue, amount })
+            });
+            const data = await res.json();
+            if (data.success) {
+                myCurrentBets.push({ prediction: selectedValue, amount });
+                renderActiveBets();
+                fetchBalance();
+                // alert("Bet Placed!");
+            } else alert(data.message);
+        }
+
+        async function cancelLastBet() {
+            const res = await fetch(`${API_URL}/api/game/bigsmall/cancel`, {
+                method: "POST",
+                headers: { authorization: token }
+            });
+            const data = await res.json();
+            if (data.success) {
+                myCurrentBets.pop();
+                renderActiveBets();
+                fetchBalance();
+                alert("Last bet cancelled");
+            } else alert(data.message);
+        }
+
+        function renderActiveBets() {
+            const container = document.getElementById("activeBets");
+            const list = document.getElementById("activeBetsList");
+            if (myCurrentBets.length === 0) {
+                container.style.display = "none";
+                return;
+            }
+            container.style.display = "block";
+            list.innerHTML = myCurrentBets.map(b => `
+                <div class="active-bet-item">
+                    <span>${b.prediction}</span>
+                    <span style="color: var(--gold); font-weight: 800;">₹${b.amount}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderResult(last) {
+            const diceBox = document.getElementById("diceBox");
+            diceBox.innerHTML = last.dice.map(d => `<div class="die">${d}</div>`).join('');
+            document.querySelectorAll(".die").forEach(d => d.classList.remove("rolling-die"));
+        }
+
+        function checkWin(last) {
+            let totalWon = 0;
+            let count = 0;
+
+            for (let bet of myCurrentBets) {
+                if (bet.prediction === last.result) {
+                    const mult = last.result === 'TRIPLE' ? 24 : 1.95;
+                    totalWon += bet.amount * mult;
+                    count++;
+                }
+            }
+
+            const resBox = document.getElementById("resultBox");
+            resBox.style.display = "block";
+
+            if (count > 0) {
+                resBox.innerHTML = `<div>WIN!</div><div style="font-size: 24px;">₹${totalWon.toFixed(2)}</div>`;
+                resBox.style.background = "rgba(40, 167, 69, 0.95)";
+                new Audio('sound/win.mp3').play().catch(e=>{});
+            } else {
+                resBox.innerHTML = `<div>LOSE</div>`;
+                resBox.style.background = "rgba(209, 2, 20, 0.95)";
+                new Audio('sound/lose.mp3').play().catch(e=>{});
+            }
+            setTimeout(() => resBox.style.display = "none", 5000);
+        }
+
+        function renderHistory(history) {
+            document.getElementById("history").innerHTML = history.slice(0, 15).map(h => `
+                <div class="hist-circle ${h.result === 'BIG' ? 'bg-b' : (h.result === 'SMALL' ? 'bg-s' : 'bg-t')}">${h.result[0]}</div>
+            `).join('');
+        }
+
+        function setAmt(v) { document.getElementById("betAmount").value = v; }
+
+        async function fetchBalance() {
+            const res = await fetch(`${API_URL}/api/profile`, { headers: { authorization: token } });
+            const data = await res.json();
+            if (data.success) document.getElementById("balance").innerText = data.user.coins.toFixed(2);
+        }
+
+        setInterval(fetchState, 500);
+        fetchBalance();
+    </script>
+</body>
+</html>

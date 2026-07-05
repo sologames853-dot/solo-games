@@ -1,0 +1,524 @@
+const User = require("../models/User");
+const Transaction = require("../models/Transaction");
+const Admin = require("../models/Admin");
+
+class LudoManager {
+    constructor() {
+        this.rooms = {};
+        this.io = null;
+
+        this.SAFE_POSITIONS = [1, 9, 14, 22, 27, 35, 40, 48];
+        // 0:Red(TL), 1:Blue(TR), 2:Yellow(BR), 3:Green(BL)
+        this.START_POSITIONS = { 0: 1, 1: 14, 2: 27, 3: 40 };
+        this.HOME_PATH_START = { 0: 51, 1: 12, 2: 25, 3: 38 };
+        this.TOTAL_CELLS = 52;
+        this.GAME_DURATION = 300;
+
+        this.BOT_NAMES = ["ProPlayer", "CasinoKing", "LuckyStar", "MasterMind", "Nawab385", "Hero5004"];
+        this.BOT_AVATARS = [
+            "https://i.pravatar.cc/150?u=bot1",
+            "https://i.pravatar.cc/150?u=bot2",
+            "https://i.pravatar.cc/150?u=bot3",
+            "https://i.pravatar.cc/150?u=bot4",
+            "https://i.pravatar.cc/150?u=bot5"
+        ];
+    }
+
+    init(io) {
+        this.io = io;
+        setInterval(() => this.updateTimers(), 1000);
+    }
+
+    updateTimers() {
+        for (let roomId in this.rooms) {
+            const room = this.rooms[roomId];
+            if (room.gameState === 'PLAYING') {
+                room.gameTimer--;
+
+                const now = Date.now();
+                // Anti-Stuck: If turn is taking too long (over 20s), force timeout
+                if (room.turnDeadline && now > room.turnDeadline + 2000) {
+                    this.handleTimeout(roomId);
+                }
+
+                this.io.to(roomId).emit('ludo_timer', {
+                    gameTimer: room.gameTimer,
+                    turnDeadline: room.turnDeadline ? Math.max(0, Math.floor((room.turnDeadline - now) / 1000)) : 0
+                });
+                if (room.gameTimer <= 0) this.endGameByScore(roomId);
+            } else if (room.gameState === 'WAITING') {
+                room.waitingTime++;
+                if (room.waitingTime >= 10) this.addBot(roomId);
+            }
+        }
+    }
+
+    addBot(roomId) {
+        const room = this.rooms[roomId];
+        if (!room || room.players.length >= 2 || room.gameState === 'PLAYING') return;
+
+        const botName = this.BOT_NAMES[Math.floor(Math.random() * this.BOT_NAMES.length)];
+        const botAvatar = this.BOT_AVATARS[Math.floor(Math.random() * this.BOT_AVATARS.length)];
+        const botId = "bot_" + Math.random().toString(36).substr(2, 9);
+
+        // Standard logic: Bot hamesha opposite corner lega
+        const playerColor = room.players[0].color;
+        const botColor = (playerColor + 2) % 4;
+
+        room.players.push({
+            id: botId, name: botName, avatar: botAvatar, socketId: null,
+            isBot: true, color: botColor, score: 0, misses: 0, rolls: 0
+        });
+
+        room.boardState.tokens[botColor] = [-1, -1, -1, -1];
+        room.gameState = 'PLAYING';
+        this.startGame(roomId);
+    }
+
+    async joinRoom(socket, userId, amount) {
+        const stake = Number(amount);
+        const name = socket.user.name;
+        const avatar = socket.user.avatar;
+
+        let roomId = Object.keys(this.rooms).find(id =>
+            this.rooms[id].gameState === 'WAITING' &&
+            this.rooms[id].stake === stake &&
+            this.rooms[id].players.length === 1
+        );
+
+        if (!roomId) {
+            roomId = `ludo_${Date.now()}_${userId}`;
+            const color = 2 + Math.floor(Math.random() * 2);
+            this.rooms[roomId] = {
+                id: roomId, stake: stake,
+                players: [{
+                    id: userId.toString(), name, avatar, socketId: socket.id,
+                    isBot: false, color: color, score: 0, misses: 0, rolls: 0
+                }],
+                gameState: 'WAITING', waitingTime: 0,
+                boardState: { tokens: { [color]: [-1, -1, -1, -1] } },
+                turn: 0, dice: 1, rolled: false, gameTimer: this.GAME_DURATION, lastUpdate: Date.now(),
+                consecutiveSixes: 0, userGotSix: false
+            };
+        } else {
+            const room = this.rooms[roomId];
+            if (room.players[0].id === userId.toString()) return;
+
+            const playerColor = room.players[0].color;
+            const myColor = (playerColor + 2) % 4;
+
+            room.players.push({
+                id: userId.toString(), name, avatar, socketId: socket.id,
+                isBot: false, color: myColor, score: 0, misses: 0, rolls: 0
+            });
+            room.boardState.tokens[myColor] = [-1, -1, -1, -1];
+            room.gameState = 'PLAYING';
+            room.turn = Math.floor(Math.random() * 2);
+            room.consecutiveSixes = 0;
+            this.startGame(roomId);
+        }
+        socket.join(roomId);
+        this.emitState(roomId);
+    }
+
+    async startGame(roomId) {
+        const room = this.rooms[roomId];
+        if (!room) return;
+        this.startTurnTimer(roomId);
+        this.emitState(roomId);
+
+        // Initial bot roll if it's bot's turn
+        if (room.players[room.turn].isBot) {
+            setTimeout(() => {
+                if (room.gameState === 'PLAYING' && !room.rolled) {
+                    this.rollDice(room.players[room.turn].id, roomId);
+                }
+            }, 2000);
+        }
+    }
+
+    startTurnTimer(roomId) {
+        const room = this.rooms[roomId];
+        if (!room) return;
+        if (room.timer) clearTimeout(room.timer);
+        room.turnDeadline = Date.now() + 15000;
+        room.timer = setTimeout(() => this.handleTimeout(roomId), 15500);
+    }
+
+    handleTimeout(roomId) {
+        const room = this.rooms[roomId];
+        if (!room || room.gameState !== 'PLAYING') return;
+        const player = room.players[room.turn];
+        player.misses++;
+        this.io.to(roomId).emit('turn_missed', { userId: player.id, misses: player.misses });
+        if (player.misses >= 3) this.endGameByMiss(roomId, player.id);
+        else this.nextTurn(roomId);
+    }
+
+    rollDice(userId, roomId) {
+        const room = this.rooms[roomId];
+        if (!room || room.gameState !== 'PLAYING' || room.rolled) return;
+        const playerIndex = room.turn;
+        if (room.players[playerIndex].id !== userId.toString()) return;
+
+        const player = room.players[playerIndex];
+        player.rolls++;
+
+        let dice = Math.floor(Math.random() * 6) + 1;
+
+        // Logic: Subtle Bot Win (User vs Bot)
+        const hasBot = room.players.some(p => p.isBot);
+        if (hasBot) {
+            if (player.isBot) {
+                // Bot turn:
+                // 1. High probability of 6 if all tokens in base
+                const myTokens = room.boardState.tokens[player.color];
+                if (myTokens.every(p => p === -1)) {
+                    if (Math.random() > 0.05) dice = 6; // 95% chance of getting 6 to start
+                } else {
+                    // 2. Try to roll a number that kills user
+                    for (let d = 1; d <= 6; d++) {
+                        if (this.checkMoveKills(room, player.color, -2, d)) {
+                            dice = d;
+                            break;
+                        }
+                    }
+                    // 3. High chance of big numbers if bot is behind
+                    const userPlayer = room.players.find(p => !p.isBot);
+                    if (player.score < userPlayer.score - 5 && dice < 4 && Math.random() > 0.5) {
+                        dice = 4 + Math.floor(Math.random() * 3);
+                    }
+                }
+            } else {
+                // User turn:
+                // 1. Give 6 in first 3 rolls if not already got one
+                if (player.rolls <= 3 && !room.userGotSix) {
+                    if (player.rolls === 3 || Math.random() > 0.5) {
+                        dice = 6;
+                        room.userGotSix = true;
+                    }
+                }
+
+                // 2. Subtle adjustments (anti-kill for bot)
+                if (this.checkKillPotential(room, player.color, dice)) {
+                    if (Math.random() > 0.7) dice = (dice % 5) + 1;
+                }
+
+                // 3. If user is close to winning, make it harder
+                const myTokens = room.boardState.tokens[player.color];
+                const winningToken = myTokens.find(p => p > 50 && p < 57);
+                if (winningToken) {
+                    const dist = 57 - winningToken;
+                    if (dice >= dist && Math.random() > 0.4) {
+                         dice = Math.max(1, dist - 1);
+                    }
+                }
+            }
+        }
+
+        // Admin Forced Dice
+        if (room.forcedDice) {
+            dice = room.forcedDice;
+            delete room.forcedDice;
+        }
+
+        room.dice = dice;
+        room.rolled = true;
+
+        if (dice === 6) {
+            room.consecutiveSixes++;
+        } else {
+            room.consecutiveSixes = 0;
+        }
+
+        // Logic: 3 consecutive sixes -> cancel turn
+        if (room.consecutiveSixes === 3) {
+            this.io.to(roomId).emit('dice_rolled', { dice, turn: room.turn, playerColor: room.players[room.turn].color, invalidated: true });
+            room.consecutiveSixes = 0;
+            setTimeout(() => this.nextTurn(roomId), 1500);
+            return;
+        }
+
+        this.io.to(roomId).emit('dice_rolled', { dice, turn: room.turn, playerColor: room.players[room.turn].color });
+
+        const possibleMoves = this.getPossibleMoves(roomId);
+        if (possibleMoves.length === 0) {
+            setTimeout(() => this.nextTurn(roomId), 1200);
+        } else if (room.players[room.turn].isBot) {
+            // Bot auto-move after roll
+            setTimeout(() => {
+                if (room.gameState === 'PLAYING' && room.rolled) {
+                    const bestToken = this.pickBestBotToken(room, playerIndex, possibleMoves);
+                    this.moveToken(room.players[room.turn].id, roomId, bestToken);
+                }
+            }, 1000);
+        }
+    }
+
+    pickBestBotToken(room, playerIndex, possibleMoves) {
+        const color = room.players[playerIndex].color;
+        const tokens = room.boardState.tokens[color];
+        const dice = room.dice;
+
+        // 1. Can kill?
+        for (let idx of possibleMoves) {
+            if (this.checkMoveKills(room, color, idx, dice)) return idx;
+        }
+        // 2. Can enter home area?
+        for (let idx of possibleMoves) {
+            const pos = tokens[idx];
+            if (pos === -1) continue;
+            if (pos + dice > 52 && pos + dice <= 57) return idx;
+        }
+        // 3. Move token closest to winning
+        let bestIdx = possibleMoves[0];
+        let maxPos = -1;
+        possibleMoves.forEach(idx => {
+            if (tokens[idx] > maxPos) {
+                maxPos = tokens[idx];
+                bestIdx = idx;
+            }
+        });
+        return bestIdx;
+    }
+
+    checkMoveKills(room, color, tokenIndex, dice) {
+        const tokens = room.boardState.tokens[color];
+
+        const checkToken = (pos) => {
+            if (pos === -1) return false;
+            let nextPos;
+            if (pos >= 101) return false;
+            nextPos = (pos + dice - 1) % this.TOTAL_CELLS + 1;
+            if (this.SAFE_POSITIONS.includes(nextPos)) return false;
+            for (let c in room.boardState.tokens) {
+                if (Number(c) === color) continue;
+                if (room.boardState.tokens[c].includes(nextPos)) return true;
+            }
+            return false;
+        };
+
+        if (tokenIndex === -2) { // Check all
+            return tokens.some(p => checkToken(p));
+        }
+        return checkToken(tokens[tokenIndex]);
+    }
+
+    checkKillPotential(room, color, dice) {
+        return this.checkMoveKills(room, color, -2, dice);
+    }
+
+    forceDice(roomId, dice) {
+        if (this.rooms[roomId]) this.rooms[roomId].forcedDice = Number(dice);
+    }
+
+    forceWin(roomId, userId) {
+        const room = this.rooms[roomId];
+        if (room) this.endGame(roomId, userId);
+    }
+
+    getPossibleMoves(roomId) {
+        const room = this.rooms[roomId];
+        const dice = room.dice;
+        const playerColor = room.players[room.turn].color;
+        const tokens = room.boardState.tokens[playerColor];
+        const possible = [];
+
+        tokens.forEach((pos, i) => {
+            if (pos === -1) {
+                if (dice === 6) possible.push(i);
+            } else if (pos >= 101) {
+                if (pos + dice <= 106) possible.push(i);
+            } else possible.push(i);
+        });
+        return possible;
+    }
+
+    async moveToken(userId, roomId, tokenIndex) {
+        const room = this.rooms[roomId];
+        if (!room || room.gameState !== 'PLAYING' || !room.rolled) return;
+        const playerIndex = room.turn;
+        if (room.players[playerIndex].id !== userId.toString()) return;
+
+        const possible = this.getPossibleMoves(roomId);
+        if (!possible.includes(tokenIndex)) return;
+
+        const dice = room.dice;
+        const playerColor = room.players[playerIndex].color;
+        let currentPos = room.boardState.tokens[playerColor][tokenIndex];
+        let path = [];
+        let nextPos;
+        let pointsEarned = 0;
+
+        if (currentPos === -1) {
+            nextPos = this.START_POSITIONS[playerColor];
+            path = [nextPos];
+            pointsEarned = 1;
+        } else {
+            let tempPos = currentPos;
+            for (let s = 1; s <= dice; s++) {
+                if (tempPos >= 101) {
+                    tempPos++;
+                } else if (tempPos === this.HOME_PATH_START[playerColor]) {
+                    tempPos = 101;
+                } else {
+                    tempPos = (tempPos % this.TOTAL_CELLS) + 1;
+                }
+                path.push(tempPos);
+            }
+            nextPos = path[path.length - 1];
+            pointsEarned = (nextPos >= 101) ? dice + (nextPos === 106 ? 56 : 0) : dice;
+        }
+
+        room.boardState.tokens[playerColor][tokenIndex] = nextPos;
+        room.players[playerIndex].score += pointsEarned;
+
+        let killed = false;
+        let killData = null;
+        if (nextPos <= 52 && !this.SAFE_POSITIONS.includes(nextPos)) {
+            for (let pIdx = 0; pIdx < room.players.length; pIdx++) {
+                if (pIdx === playerIndex) continue;
+                const oppColor = room.players[pIdx].color;
+                const oppTokens = room.boardState.tokens[oppColor];
+                oppTokens.forEach((opos, oi) => {
+                    if (opos === nextPos) {
+                        room.boardState.tokens[oppColor][oi] = -1;
+                        killed = true;
+                        room.players[playerIndex].score += 10;
+                        killData = { color: oppColor, index: oi };
+                    }
+                });
+            }
+        }
+
+        this.io.to(roomId).emit('token_moved', {
+            playerIndex: playerIndex,
+            playerColor: playerColor,
+            tokenIndex,
+            nextPos,
+            path,
+            tokens: room.boardState.tokens,
+            scores: room.players.map(p => p.score),
+            killed,
+            killData
+        });
+
+        if (room.boardState.tokens[playerColor].every(p => p === 106)) {
+            this.endGame(roomId, userId);
+            return;
+        }
+
+        if (dice === 6 || killed) {
+            room.rolled = false;
+            this.startTurnTimer(roomId);
+            this.emitState(roomId);
+
+            // If bot rolled 6 or killed, it gets another turn immediately
+            if (room.players[room.turn].isBot) {
+                setTimeout(() => {
+                    if (room.gameState === 'PLAYING' && !room.rolled) {
+                        this.rollDice(room.players[room.turn].id, roomId);
+                    }
+                }, 1500);
+            }
+        } else this.nextTurn(roomId);
+    }
+
+    nextTurn(roomId) {
+        const room = this.rooms[roomId];
+        if (!room || room.gameState !== 'PLAYING') return;
+        room.turn = (room.turn + 1) % room.players.length;
+        room.rolled = false;
+        room.consecutiveSixes = 0; // Reset for next player
+        this.startTurnTimer(roomId);
+        this.emitState(roomId);
+
+        // If next player is bot, trigger roll
+        if (room.players[room.turn].isBot) {
+            setTimeout(() => {
+                if (room.gameState === 'PLAYING' && !room.rolled && room.turn === room.players.findIndex(p => p.isBot)) {
+                    this.rollDice(room.players[room.turn].id, roomId);
+                }
+            }, 1500);
+        }
+    }
+
+    async endGameByScore(roomId) {
+        const room = this.rooms[roomId];
+        if (!room) return;
+        const scores = room.players.map(p => p.score);
+        let winnerIdx = scores[0] >= scores[1] ? 0 : 1;
+        this.endGame(roomId, room.players[winnerIdx].id);
+    }
+
+    async endGameByMiss(roomId, loserId) {
+        const room = this.rooms[roomId];
+        if (!room) return;
+        const winner = room.players.find(p => p.id !== loserId);
+        if (winner) this.endGame(roomId, winner.id);
+    }
+
+    async endGame(roomId, winnerId) {
+        const room = this.rooms[roomId];
+        if (!room || room.gameState === 'FINISHED') return;
+        room.gameState = 'FINISHED';
+        room.winner = winnerId;
+        if (room.timer) clearTimeout(room.timer);
+
+        const stake = room.stake;
+        const prize = stake * 1.8;
+        const winner = room.players.find(p => p.id === winnerId.toString());
+        if (winner && !winner.isBot) {
+            try {
+                await User.findByIdAndUpdate(winnerId, { $inc: { coins: prize } });
+                await new Transaction({
+                    user_id: winnerId, amount: prize, type: 'game_win',
+                    game_name: 'Ludo', details: `Won Ludo match (Stake: ${stake})`
+                }).save();
+                await Admin.findOneAndUpdate({}, { $inc: { balance: -(prize - stake) } });
+            } catch (e) { console.error("Ludo Win error:", e); }
+        }
+        this.io.to(roomId).emit('game_over', { winnerId, prize, scores: room.players.map(p => p.score) });
+        setTimeout(() => delete this.rooms[roomId], 5000);
+    }
+
+    emitState(roomId) {
+        const room = this.rooms[roomId];
+        if (!room) return;
+        this.io.to(roomId).emit('ludo_state', {
+            id: room.id,
+            players: room.players.map(p => ({ id: p.id, name: p.name, avatar: p.avatar, color: p.color, score: p.score, misses: p.misses, isBot: p.isBot })),
+            gameState: room.gameState, board: room.boardState,
+            turn: room.turn, dice: room.dice, rolled: room.rolled,
+            turnDeadline: room.turnDeadline, gameTimer: room.gameTimer
+        });
+    }
+
+    handleDisconnect(socketId) {
+        const roomId = Object.keys(this.rooms).find(id =>
+            this.rooms[id].players.some(p => p.socketId === socketId)
+        );
+        if (roomId) {
+            const room = this.rooms[roomId];
+            if (room.gameState === 'PLAYING') {
+                const opponent = room.players.find(p => p.socketId !== socketId);
+                if (opponent) this.endGame(roomId, opponent.id);
+            } else delete this.rooms[roomId];
+        }
+    }
+
+    handleChat(socket, roomId, message, emoji) {
+        const room = this.rooms[roomId];
+        if (!room) return;
+        const sender = room.players.find(p => p.socketId === socket.id);
+        if (!sender) return;
+        this.io.to(roomId).emit('ludo_chat_received', {
+            senderId: sender.id,
+            name: sender.name,
+            message: message,
+            emoji: emoji
+        });
+    }
+}
+
+module.exports = new LudoManager();
