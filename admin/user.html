@@ -1,41 +1,91 @@
 ﻿<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>User Search</title>
-<link rel="stylesheet" href="/css/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Search | Solo Games Admin</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: #0a0b0d;
+            color: white;
+            padding: 20px;
+            font-family: sans-serif;
+        }
+        .container { max-width: 800px; margin: auto; }
+        .search-box {
+            display: flex; gap: 10px; margin-bottom: 30px;
+        }
+        input {
+            flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #1a1b20; color: white;
+        }
+        button {
+            padding: 12px 25px; border-radius: 8px; border: none; background: #f1c40f; color: black; font-weight: bold; cursor: pointer;
+        }
+        .user-card {
+            background: #1a1b20; padding: 20px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #333;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .user-info h3 { margin: 0 0 5px 0; }
+        .user-info p { margin: 0; font-size: 14px; color: #888; }
+        .user-stats { text-align: right; }
+        .coins { font-size: 20px; font-weight: bold; color: #f1c40f; }
+    </style>
 </head>
 <body>
-<div class="form-box">
-<h2>User Search</h2>
-<input type="text" id="keyword" placeholder="Name or Email">
-<button onclick="searchUser()">Search</button>
-</div>
-<div id="result"></div>
-<script>
-const keyword = document.getElementById("keyword").value;
+    <div class="container">
+        <h2><i class="fas fa-users"></i> User Search</h2>
+        <div class="search-box">
+            <input type="text" id="keyword" placeholder="Enter name or email..." onkeyup="if(event.key==='Enter') searchUser()">
+            <button onclick="searchUser()">SEARCH</button>
+        </div>
+        <div id="results"></div>
+    </div>
 
-const res = await fetch(
-    "https://casino-vri2.onrender.com/api/admin/search-user/" + encodeURIComponent(keyword),
-    {
-        headers: { authorization: localStorage.getItem("adminToken") }
-    }
-);
+    <script src="/js/config.js"></script>
+    <script>
+        const token = localStorage.getItem("adminToken");
+        if (!token) location.href = "login.html";
 
-const data = await res.json();
+        async function searchUser() {
+            const keyword = document.getElementById("keyword").value;
+            if (!keyword) return;
 
-let html = "";
+            const resultsDiv = document.getElementById("results");
+            resultsDiv.innerHTML = "Searching...";
 
-data.forEach(user => {
-    html += `
-    <div class="card">
-        <h3>${user.name}</h3>
-        <p>${user.email}</p>
-        <p>${user.coins} Coins</p>
-    </div>`;
-});
+            try {
+                // Use API_URL if defined, fallback to origin
+                const baseUrl = typeof API_URL !== 'undefined' ? API_URL : window.location.origin;
+                const res = await fetch(`${baseUrl}/api/admin/search-user/${encodeURIComponent(keyword)}`, {
+                    headers: { "authorization": token }
+                });
+                const data = await res.json();
 
-document.getElementById("result").innerHTML = html;
-}
-</script>
+                if (data.length === 0) {
+                    resultsDiv.innerHTML = "No users found.";
+                    return;
+                }
+
+                resultsDiv.innerHTML = data.map(user => `
+                    <div class="user-card">
+                        <div class="user-info">
+                            <h3>${user.name}</h3>
+                            <p>${user.email}</p>
+                            <p style="font-size: 10px; margin-top: 5px;">ID: ${user.id}</p>
+                        </div>
+                        <div class="user-stats">
+                            <div class="coins">₹${user.coins.toFixed(2)}</div>
+                            <div style="font-size: 12px; color: ${user.status === 'active' ? '#10b981' : '#ef4444'}">${user.status.toUpperCase()}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                resultsDiv.innerHTML = "Error searching users.";
+                console.error(err);
+            }
+        }
+    </script>
 </body>
 </html>
