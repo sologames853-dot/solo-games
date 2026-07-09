@@ -637,11 +637,14 @@
                 const ctx = new AudioContext();
                 if (ctx.state === 'suspended') ctx.resume();
             }
-            // Trigger a dummy sound if possible
+            // Trigger a dummy sound to unlock
             const dummy = new Audio();
-            dummy.play().catch(e => {});
+            dummy.muted = true;
+            dummy.play().then(() => {
+                dummy.pause();
+                console.log("Audio unlocked successfully");
+            }).catch(e => console.log("Audio unlock failed", e));
 
-            console.log("Audio context unlocked globally");
             document.removeEventListener('click', unlockAudio);
             document.removeEventListener('touchstart', unlockAudio);
             document.removeEventListener('mousedown', unlockAudio);

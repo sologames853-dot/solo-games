@@ -1290,16 +1290,30 @@
 
         // Sound Unlock on first interaction (Better for WebView)
         const unlockAudio = () => {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                const ctx = new AudioContext();
+                if (ctx.state === 'suspended') ctx.resume();
+            }
+
             [sndFly, sndWin, sndCrash, sndLose, sndTick].forEach(s => {
                 if (s) {
-                    s.play().then(() => { s.pause(); s.currentTime = 0; }).catch(() => {});
+                    const originalMuted = s.muted;
+                    s.muted = true;
+                    s.play().then(() => {
+                        s.pause();
+                        s.muted = originalMuted;
+                        s.currentTime = 0;
+                    }).catch(() => {});
                 }
             });
             document.removeEventListener('click', unlockAudio);
             document.removeEventListener('touchstart', unlockAudio);
+            document.removeEventListener('mousedown', unlockAudio);
         };
         document.addEventListener('click', unlockAudio);
         document.addEventListener('touchstart', unlockAudio);
+        document.addEventListener('mousedown', unlockAudio);
     </script>
 </body>
 </html>

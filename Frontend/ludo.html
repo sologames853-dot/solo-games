@@ -143,10 +143,12 @@
 </head>
 <body>
 
-    <audio id="bg-music" loop><source src="https://www.soundjay.com/misc/sounds/wind-chime-1.mp3"></audio>
-    <audio id="dice-sound"><source src="sound/dice2.mp3"></audio>
-    <audio id="move-sound"><source src="sound/move.mp3"></audio>
-    <audio id="kill-sound"><source src="sound/kill.mp3"></audio>
+    <audio id="bg-music" loop preload="auto"><source src="https://www.soundjay.com/misc/sounds/wind-chime-1.mp3"></audio>
+    <audio id="dice-sound" preload="auto"><source src="sound/dice2.mp3"></audio>
+    <audio id="move-sound" preload="auto"><source src="sound/move.mp3"></audio>
+    <audio id="kill-sound" preload="auto"><source src="sound/kill.mp3"></audio>
+    <audio id="star-sound" preload="auto"><source src="sound/collect-token.mp3"></audio>
+    <audio id="win-sound" preload="auto"><source src="sound/gotiwun.mp3"></audio>
 
     <div id="lobby">
         <h1 style="color:#f1c40f; font-size: 38px; margin-top: 60px; font-weight: 900; letter-spacing: 2px;">LUDO TURBO</h1>
@@ -297,26 +299,56 @@
 
         let myId = "", currentRoom = null, myPlayerIndex = -1, gameState = null, isMoving = false, boardRotation = 0;
 
-        // Sounds
-        const sndDice = new Audio('sound/dice2.mp3');
-        const sndMove = new Audio('sound/move.mp3');
-        const sndKill = new Audio('sound/kill.mp3');
-        const sndStar = new Audio('sound/collect-token.mp3');
-        const sndWin = new Audio('sound/gotiwun.mp3');
-        const sndBg = new Audio('https://www.soundjay.com/misc/sounds/wind-chime-1.mp3');
-        sndBg.loop = true;
+        // Sounds Utility
+        const sounds = {
+            dice: document.getElementById('dice-sound'),
+            move: document.getElementById('move-sound'),
+            kill: document.getElementById('kill-sound'),
+            star: document.getElementById('star-sound'),
+            win: document.getElementById('win-sound'),
+            bg: document.getElementById('bg-music')
+        };
 
-        function initSounds() {
-            const unlock = () => {
-                [sndDice, sndMove, sndKill, sndStar, sndWin].forEach(s => { s.play().then(() => { s.pause(); s.currentTime = 0; }); });
-                sndBg.play().catch(e => {});
-                window.removeEventListener('touchstart', unlock);
-                window.removeEventListener('click', unlock);
-            };
-            window.addEventListener('touchstart', unlock);
-            window.addEventListener('click', unlock);
+        function playSnd(name) {
+            const s = sounds[name];
+            if (!s) return;
+            s.currentTime = 0;
+            const p = s.play();
+            if (p !== undefined) {
+                p.catch(e => console.log("Audio play blocked", e));
+            }
         }
-        initSounds();
+
+        // Webview Audio Fix: Unlock audio context
+        const unlockAudio = () => {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                const ctx = new AudioContext();
+                if (ctx.state === 'suspended') ctx.resume();
+            }
+
+            Object.values(sounds).forEach(s => {
+                if (s) {
+                    const originalMuted = s.muted;
+                    s.muted = true;
+                    s.play().then(() => {
+                        s.pause();
+                        s.muted = originalMuted;
+                        s.currentTime = 0;
+                    }).catch(() => {});
+                }
+            });
+
+            // Try playing background music after unlock
+            playSnd('bg');
+
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+            document.removeEventListener('mousedown', unlockAudio);
+        };
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('touchstart', unlockAudio);
+        document.addEventListener('mousedown', unlockAudio);
 
         function createBoard() {
             const board = document.getElementById('board'); board.innerHTML = "";
@@ -409,7 +441,7 @@
             el.classList.remove('rolling'); void el.offsetWidth; el.classList.add('rolling');
 
             sndDice.currentTime = 0;
-            sndDice.play().catch(e=> {});
+            playSnd('dice');
 
             // Unique Rolling Effect: Rapidly cycle numbers while jumping
             let count = 0;
@@ -476,18 +508,18 @@
                     }
 
                     if (i === data.path.length - 1) { // Final position
-                        if (pos >= 106) { sndWin.play().catch(e=>{}); }
-                        else if (cell && cell.classList.contains('safe')) { sndStar.play().catch(e=>{}); }
-                        else { sndMove.currentTime = 0; sndMove.play().catch(e=>{}); }
+                        if (pos >= 106) { playSnd('win'); }
+                        else if (cell && cell.classList.contains('safe')) { playSnd('star'); }
+                        else { playSnd('move'); }
                     } else {
-                        sndMove.currentTime = 0; sndMove.play().catch(e=>{});
+                        playSnd('move');
                     }
                 }
             }
 
             if (data.killed) {
                 setTimeout(() => {
-                    sndKill.play().catch(e=>{});
+                    playSnd('kill');
                     const killedToken = document.querySelector(`.token.${colors[data.killData.color]}[data-idx="${data.killData.index}"]`);
                     if (killedToken) {
                         killedToken.style.transition = "all 0.6s cubic-bezier(0.4, 0, 0.2, 1)";
