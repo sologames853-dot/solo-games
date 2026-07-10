@@ -48,7 +48,7 @@ class LudoManager {
                 if (room.gameTimer <= 0) this.endGameByScore(roomId);
             } else if (room.gameState === 'WAITING') {
                 room.waitingTime++;
-                if (room.waitingTime >= 5) this.addBot(roomId);
+                if (room.waitingTime >= 3) this.addBot(roomId);
             }
         }
     }
@@ -79,6 +79,20 @@ class LudoManager {
         const stake = Number(amount);
         const name = socket.user.name;
         const avatar = socket.user.avatar;
+
+        // Check if user is already in a waiting room and update it
+        let existingRoomId = Object.keys(this.rooms).find(id =>
+            this.rooms[id].gameState === 'WAITING' &&
+            this.rooms[id].players.some(p => p.id === userId.toString())
+        );
+
+        if (existingRoomId) {
+            const room = this.rooms[existingRoomId];
+            room.players[0].socketId = socket.id;
+            socket.join(existingRoomId);
+            this.emitState(existingRoomId);
+            return;
+        }
 
         let roomId = Object.keys(this.rooms).find(id =>
             this.rooms[id].gameState === 'WAITING' &&

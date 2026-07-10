@@ -244,28 +244,6 @@
         console.log("Connecting to Socket.io at:", typeof API_URL !== 'undefined' ? API_URL : window.location.origin);
         const socket = io(typeof API_URL !== 'undefined' ? API_URL : window.location.origin, { auth: { token } });
 
-        // Webview Audio Fix: Unlock audio context
-        const unlockAudio = () => {
-            ['bg-music', 'dice-sound', 'move-sound', 'kill-sound'].forEach(id => {
-                const s = document.getElementById(id);
-                if (s) {
-                    const originalMuted = s.muted;
-                    s.muted = true;
-                    s.play().then(() => {
-                        s.pause();
-                        s.muted = originalMuted;
-                        s.currentTime = 0;
-                    }).catch(() => {});
-                }
-            });
-            document.removeEventListener('click', unlockAudio);
-            document.removeEventListener('touchstart', unlockAudio);
-            document.removeEventListener('mousedown', unlockAudio);
-        };
-        document.addEventListener('click', unlockAudio);
-        document.addEventListener('touchstart', unlockAudio);
-        document.addEventListener('mousedown', unlockAudio);
-
         socket.on('connect', () => {
             console.log("Socket connected successfully!");
             document.title = "Ludo Turbo | Connected";
@@ -414,7 +392,6 @@
             document.getElementById('lobby').style.display = 'none';
             document.getElementById('search-overlay').style.display = 'flex';
             document.getElementById('prize-text').innerText = (amount * 1.8).toFixed(2);
-            initSounds();
         }
 
         function rollDice() {
@@ -440,7 +417,6 @@
 
             el.classList.remove('rolling'); void el.offsetWidth; el.classList.add('rolling');
 
-            sndDice.currentTime = 0;
             playSnd('dice');
 
             // Unique Rolling Effect: Rapidly cycle numbers while jumping
