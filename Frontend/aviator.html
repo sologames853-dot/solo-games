@@ -724,7 +724,7 @@
     <audio id="sndWin" src="sound/win.mp3"></audio>
     <audio id="sndCrash" src="sound/crash.mp3"></audio>
     <audio id="sndLose" src="sound/lose.mp3"></audio>
-    <audio id="sndTick" src="sound/tick.mp3"></audio>
+    <audio id="sndTick" src="sound/tick.wav"></audio>
 
     <script>
         const API_URL = window.location.origin;
@@ -771,6 +771,15 @@
         }
 
         const sndFly = document.getElementById("sndFly");
+        if (sndFly) {
+            sndFly.loop = true;
+            sndFly.addEventListener('ended', function() {
+                if (isFlying) {
+                    this.currentTime = 0;
+                    this.play().catch(e => {});
+                }
+            }, false);
+        }
         const sndWin = document.getElementById("sndWin");
         const sndCrash = document.getElementById("sndCrash");
         const sndLose = document.getElementById("sndLose");
