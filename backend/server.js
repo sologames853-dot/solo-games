@@ -660,8 +660,9 @@ async function startAviatorFlight() {
                 aviatorState.noBetStreak = 0; // Reset streak when real players join
                 aviatorState.realRoundCounter++;
 
-                // Rigging: If real players bet, crash between 1.02 and 1.33 so they can't cash out
-                aviatorState.crashMultiplier = 1.02 + (Math.random() * 0.31);
+                // Rigging: If real players bet, crash between 1.02 and 1.43 so they can't cash out
+                // Using Math.random to ensure it varies every time (Badal badal ke crash hoga)
+                aviatorState.crashMultiplier = 1.02 + (Math.random() * 0.41);
             }
         }
 
