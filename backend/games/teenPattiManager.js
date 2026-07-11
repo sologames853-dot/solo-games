@@ -403,13 +403,13 @@ setInterval(async () => {
         for (let id in tables) {
             const t = tables[id];
 
-            // Reconnection/Disconnect Logic: Cleanup players disconnected for more than 10 seconds
+            // Reconnection/Disconnect Logic: Cleanup players disconnected for more than 30 seconds
             for (let uid in t.players) {
                 const p = t.players[uid];
                 if (p.disconnectedAt && !p.isBot) {
                     const diff = (Date.now() - p.disconnectedAt) / 1000;
-                    // If round is playing and it's their turn, give them their turn time or 10s min
-                    const gracePeriod = (t.state === 'PLAYING' && t.currentTurn === uid) ? Math.max(10, t.timer) : 10;
+                    // If round is playing and it's their turn, give them their turn time or 30s min
+                    const gracePeriod = (t.state === 'PLAYING' && t.currentTurn === uid) ? Math.max(30, t.timer) : 30;
 
                     if (diff > gracePeriod) {
                         delete t.players[uid];
@@ -450,8 +450,11 @@ module.exports = {
         for(let uid in t.players) {
             const p = t.players[uid];
 
-            // If user returns, clear their pending exit flag
-            if (uid === userId) p.pendingExit = false;
+            // If user returns, clear their pending exit flag and disconnect timer
+            if (uid === userId) {
+                p.pendingExit = false;
+                p.disconnectedAt = null;
+            }
 
             // Show hand if it's me, OR if the request is from an admin, OR game is in SHOW state
             const show = (uid === userId || isAdmin || t.state === 'SHOW');

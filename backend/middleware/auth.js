@@ -9,7 +9,9 @@ if (!SECRET) {
 
 module.exports = async (req, res, next) => {
     try {
-        const token = req.headers.authorization;
+        let token = req.headers.authorization;
+        if (!token && req.query.token) token = req.query.token;
+
         if (!token) {
             console.log("Auth Middleware: Token Missing");
             return res.status(401).json({

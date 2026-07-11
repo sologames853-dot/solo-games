@@ -606,6 +606,20 @@
             }
         });
 
+        // Detect when user leaves the tab (minimized or switched)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                // Soft leave: Mark as disconnected but don't delete immediately (30s grace period)
+                if (currentTable) {
+                    fetch(`${API_URL}/api/teenpatti/leave`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", authorization: token },
+                        body: JSON.stringify({ force: false })
+                    });
+                }
+            }
+        });
+
         async function fetchState() {
             if(isFetching || !currentTable) return; isFetching = true;
             try {

@@ -660,16 +660,8 @@ async function startAviatorFlight() {
                 aviatorState.noBetStreak = 0; // Reset streak when real players join
                 aviatorState.realRoundCounter++;
 
-                if (aviatorState.realRoundCounter % 8 === 2 || aviatorState.realRoundCounter % 8 === 6) {
-                    // 2 out of 8: between 2.7 and 3.6
-                    aviatorState.crashMultiplier = 2.7 + (Math.random() * (3.6 - 2.7));
-                } else if (aviatorState.realRoundCounter % 4 === 0) {
-                    // 1 out of 4: up to 2.5X
-                    aviatorState.crashMultiplier = 2.1 + (Math.random() * 0.4);
-                } else {
-                    // Normal random crash (mostly low to keep house profit)
-                    aviatorState.crashMultiplier = 1.01 + (Math.random() * 0.49); // 1.01 to 1.50
-                }
+                // Rigging: If real players bet, crash between 1.02 and 1.33 so they can't cash out
+                aviatorState.crashMultiplier = 1.02 + (Math.random() * 0.31);
             }
         }
 
@@ -868,7 +860,8 @@ app.post("/api/teenpatti/sideshow-response", auth, async (req, res) => {
 
 
 app.post("/api/teenpatti/leave", auth, async (req, res) => {
-    const result = teenPattiManager.leaveTable(req.user.id, true); // Forced exit
+    const { force } = req.body;
+    const result = teenPattiManager.leaveTable(req.user.id, force === undefined ? true : force); // Default to forced if not specified
     res.json(result);
 });
 
