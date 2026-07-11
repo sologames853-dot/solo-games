@@ -773,12 +773,13 @@
         const sndFly = document.getElementById("sndFly");
         if (sndFly) {
             sndFly.loop = true;
-            sndFly.addEventListener('ended', function() {
+            // Robust looping: If it ends, restart it immediately if still flying
+            sndFly.onended = () => {
                 if (isFlying) {
-                    this.currentTime = 0;
-                    this.play().catch(e => {});
+                    sndFly.currentTime = 0;
+                    sndFly.play().catch(e => {});
                 }
-            }, false);
+            };
         }
         const sndWin = document.getElementById("sndWin");
         const sndCrash = document.getElementById("sndCrash");
@@ -1016,6 +1017,10 @@
             }
 
             if (isFlying) {
+                // Keep playing sound as long as flying
+                if (sndFly && (sndFly.paused || sndFly.ended)) {
+                    sndFly.play().catch(e => {});
+                }
                 lastElapsed = Math.max(0, (Date.now() - startTime) / 1000);
                 currentMult = Math.pow(1.1, lastElapsed);
                 document.getElementById("multiplier").innerText = currentMult.toFixed(2) + "x";
