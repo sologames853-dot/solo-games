@@ -720,11 +720,11 @@
     </div>
 
 
-    <audio id="sndFly" src="sound/fly.mp3" loop></audio>
-    <audio id="sndWin" src="sound/win.mp3"></audio>
-    <audio id="sndCrash" src="sound/crash.mp3"></audio>
-    <audio id="sndLose" src="sound/lose.mp3"></audio>
-    <audio id="sndTick" src="sound/tick.wav"></audio>
+    <audio id="sndFly" src="sound/fly.mp3" preload="auto" loop></audio>
+    <audio id="sndWin" src="sound/win.mp3" preload="auto"></audio>
+    <audio id="sndCrash" src="sound/crash.mp3" preload="auto"></audio>
+    <audio id="sndLose" src="sound/lose.mp3" preload="auto"></audio>
+    <audio id="sndTick" src="sound/tick.wav" preload="auto"></audio>
 
     <script>
         const API_URL = window.location.origin;
@@ -770,21 +770,46 @@
             renderBets([], []); // Re-render current view
         }
 
-        const sndFly = document.getElementById("sndFly");
-        if (sndFly) {
-            sndFly.loop = true;
-            // Robust looping: If it ends, restart it immediately if still flying
-            sndFly.onended = () => {
-                if (isFlying) {
-                    sndFly.currentTime = 0;
-                    sndFly.play().catch(e => {});
+        const sounds = {
+            fly: document.getElementById("sndFly"),
+            win: document.getElementById("sndWin"),
+            crash: document.getElementById("sndCrash"),
+            lose: document.getElementById("sndLose"),
+            tick: document.getElementById("sndTick")
+        };
+
+        function playSnd(name, loop = false) {
+            const s = sounds[name];
+            if (!s) return;
+            s.loop = loop;
+            if (s.paused) {
+                s.play().catch(e => {});
+            }
+        }
+
+        function stopSnd(name) {
+            const s = sounds[name];
+            if (!s) return;
+            s.pause();
+            s.currentTime = 0;
+        }
+
+        // Manual loop fallback for WebView
+        if (sounds.fly) {
+            sounds.fly.addEventListener('timeupdate', function() {
+                if (isFlying && this.duration > 0) {
+                    if (this.currentTime > this.duration - 0.5) {
+                        this.currentTime = 0;
+                        this.play().catch(()=>{});
+                    }
                 }
+            }, false);
+
+            // Re-trigger if paused during flight
+            sounds.fly.onpause = () => {
+                if (isFlying) sounds.fly.play().catch(()=>{});
             };
         }
-        const sndWin = document.getElementById("sndWin");
-        const sndCrash = document.getElementById("sndCrash");
-        const sndLose = document.getElementById("sndLose");
-        const sndTick = document.getElementById("sndTick");
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -856,9 +881,8 @@
             if (data.isFlying) {
                 document.getElementById("central-timer").style.display = "none";
                 // Stop Tick sound if flying or crashed
-                if (sndTick) {
-                    sndTick.pause();
-                    sndTick.currentTime = 0;
+                if (sounds.tick) {
+                    stopSnd('tick');
                 }
 
                 if (data.isCrashed) {
@@ -888,9 +912,11 @@
                         // Synchronize perfectly with server's startTime
                         startTime = data.startTime + offset;
 
-                        sndFly.play().catch(e=>{});
+                        playSnd('fly', true);
                         animate();
                     }
+                    // Keep-alive check for sound
+                    if (sounds.fly.paused) playSnd('fly', true);
                     for (let i = 1; i <= 2; i++) {
                         if (activeBets[i].placed && document.getElementById(`autoEnabled${i}`).checked) {
                             const target = parseFloat(document.getElementById(`autoVal${i}`).value);
@@ -923,15 +949,9 @@
                 // Tik Tik sound logic
                 if (data.timer !== lastTimerValue && data.timer > 0) {
                     lastTimerValue = data.timer;
-                    if (sndTick) {
-                        sndTick.currentTime = 0;
-                        sndTick.play().catch(e => {});
-                    }
+                    playSnd('tick');
                 } else if (data.timer === 0) {
-                    if (sndTick) {
-                        sndTick.pause();
-                        sndTick.currentTime = 0;
-                    }
+                    stopSnd('tick');
                 }
 
                 if (!isCrashed) {
@@ -1017,10 +1037,6 @@
             }
 
             if (isFlying) {
-                // Keep playing sound as long as flying
-                if (sndFly && (sndFly.paused || sndFly.ended)) {
-                    sndFly.play().catch(e => {});
-                }
                 lastElapsed = Math.max(0, (Date.now() - startTime) / 1000);
                 currentMult = Math.pow(1.1, lastElapsed);
                 document.getElementById("multiplier").innerText = currentMult.toFixed(2) + "x";
@@ -1129,14 +1145,14 @@
             isFlying = false;
             isCrashed = true;
             crashStartTime = Date.now();
-            sndFly.pause(); sndFly.currentTime = 0;
-            sndCrash.play().catch(e=>{});
+            stopSnd('fly');
+            playSnd('crash');
             document.getElementById("multiplier").style.color = "var(--primary-red)";
 
             // Play lose sound ONLY if user had active bets and hasn't cashed out
             const hadActiveBet = (activeBets[1].placed || activeBets[2].placed);
             if (hadActiveBet) {
-                sndLose.play().catch(e=>{});
+                playSnd('lose');
                 showResult('lose', 0);
             }
 
@@ -1201,7 +1217,7 @@
             try {
                 if (!isPlaced) {
                     // Action: BET
-                    if (sndTick) { sndTick.currentTime = 0; sndTick.play().catch(()=>{}); }
+                    playSnd('tick');
 
                     activeBets[i].placed = true;
                     activeBets[i].amount = amount;
@@ -1242,10 +1258,7 @@
                     const winAmt = (activeBets[i].amount * currentMult).toFixed(2);
                     activeBets[i].placed = false;
 
-                    if (sndWin) {
-                        sndWin.currentTime = 0;
-                        sndWin.play().catch(e=>{});
-                    }
+                    playSnd('win');
 
                     updateButtonsFlying();
                     showResult('win', winAmt);
@@ -1310,7 +1323,7 @@
                 if (ctx.state === 'suspended') ctx.resume();
             }
 
-            [sndFly, sndWin, sndCrash, sndLose, sndTick].forEach(s => {
+            [sounds.fly, sounds.win, sounds.crash, sounds.lose, sounds.tick].forEach(s => {
                 if (s) {
                     const originalMuted = s.muted;
                     s.muted = true;
