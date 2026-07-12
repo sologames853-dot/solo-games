@@ -205,7 +205,7 @@
                 const res = await fetch(`${API_URL}/api/profile`, { headers: { authorization: token } });
                 const data = await res.json();
                 if(data.success) {
-                    document.getElementById('mainBalance').innerText = data.user.coins.toLocaleString() + " INR";
+                    document.getElementById('mainBalance').innerText = data.user.coins.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " INR";
 
                     // KYC Logic
                     const user = data.user;
@@ -308,7 +308,7 @@
                         </div>
                         <div style="text-align: right;">
                             <div style="font-weight: 900; color: ${t.amount < 0 ? 'var(--accent-red)' : 'var(--accent-green)'}">
-                                ${t.amount > 0 ? '+' : ''}${t.amount}
+                                ${t.amount > 0 ? '+' : ''}${t.amount.toFixed(2)}
                             </div>
                             <span class="badge badge-${t.status}">${t.status}</span>
                         </div>

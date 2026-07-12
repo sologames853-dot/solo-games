@@ -560,8 +560,8 @@
                         userListEl.innerHTML = '<div style="opacity:0.5">No active users</div>';
                     }
 
-                    document.getElementById('stat-totalCoins').innerText = s.totalCoins.toLocaleString();
-                    document.getElementById('stat-adminWallet').innerText = s.adminWalletBalance.toLocaleString();
+                    document.getElementById('stat-totalCoins').innerText = s.totalCoins.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    document.getElementById('stat-adminWallet').innerText = s.adminWalletBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
                     if (s.aviatorState) {
                         const avi = s.aviatorState;
@@ -1079,10 +1079,10 @@
                         </td>
                         <td>
                             <div style="display:flex; gap:5px; margin-bottom:5px;">
-                                <input type="number" value="${u.coins}" id="coins-${u.id}" class="input-dark" style="width: 80px; padding:5px; height:30px; font-size:12px;">
+                                <input type="number" value="${u.coins}" id="coins-${u.id}" step="0.01" class="input-dark" style="width: 80px; padding:5px; height:30px; font-size:12px;">
                                 <button class="action-btn btn-edit" style="padding:5px 10px;" onclick="updateCoins('${u.id}')"><i class="fas fa-save"></i></button>
                             </div>
-                            <small>Total Dep: ₹${u.total_deposited || 0}</small>
+                            <small>Total Dep: ₹${(u.total_deposited || 0).toFixed(2)}</small>
                         </td>
                         <td>
                             <span class="badge ${u.kyc_status === 'verified' ? 'badge-success' : (u.kyc_status === 'rejected' ? 'badge-danger' : '')}" style="font-size:10px;">KYC: ${u.kyc_status.toUpperCase()}</span><br>

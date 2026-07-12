@@ -723,13 +723,14 @@ async function resolveAviatorCrash(manualMultiplier = null) {
             for (let bet of currentBets) {
                 if (!bet.cashedOut) {
                     try {
+                        const amount = Number(bet.betAmount.toFixed(2));
                         await new Transaction({
                             user_id: bet.userId,
-                            amount: -bet.betAmount,
+                            amount: -amount,
                             type: "game_aviator",
                             details: `Crashed at ${aviatorState.crashMultiplier.toFixed(2)}x`
                         }).save();
-                        await Admin.findOneAndUpdate({}, { $inc: { balance: bet.betAmount } });
+                        await Admin.findOneAndUpdate({}, { $inc: { balance: amount } });
                     } catch (err) {}
                 }
             }
@@ -821,7 +822,7 @@ app.post("/api/game/aviator/cashout", auth, async (req, res) => {
         if (betIndex === -1) return res.json({ success: false, message: "No active bet" });
 
         const bet = activeBets.aviator[betIndex];
-        const winAmount = Math.floor(bet.betAmount * multiplier);
+        const winAmount = Number((bet.betAmount * multiplier).toFixed(2));
 
         const user = await User.findById(userId);
         user.coins += winAmount;

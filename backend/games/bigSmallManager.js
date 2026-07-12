@@ -73,7 +73,7 @@ class BigSmallManager {
             totalBetAmount += bet.amount;
             if (bet.prediction === result) {
                 const multiplier = result === 'TRIPLE' ? 24 : 1.95;
-                const winAmount = Math.floor(bet.amount * multiplier);
+                const winAmount = Number((bet.amount * multiplier).toFixed(2));
                 totalPayout += winAmount;
                 await User.findByIdAndUpdate(bet.userId, { $inc: { coins: winAmount }, referral_played: true });
                 await new Transaction({

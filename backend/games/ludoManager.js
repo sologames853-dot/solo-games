@@ -588,7 +588,7 @@ class LudoManager {
         if (room.timer) clearTimeout(room.timer);
 
         const stake = room.stake;
-        const prize = stake * 1.8;
+        const prize = Number((stake * 1.8).toFixed(2));
         const winner = room.players.find(p => p.id === winnerId.toString());
 
         // Update Bot Game Counter for pattern if it was a bot game
