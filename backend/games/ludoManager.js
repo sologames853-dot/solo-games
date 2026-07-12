@@ -166,7 +166,8 @@ class LudoManager {
                 gameState: 'WAITING', waitingTime: 0,
                 boardState: { tokens: { [color]: [-1, -1, -1, -1] } },
                 turn: 0, dice: 1, rolled: false, gameTimer: this.GAME_DURATION, lastUpdate: Date.now(),
-                consecutiveSixes: 0, userGotSix: false, isBotGame: false
+                consecutiveSixes: 0, userGotSix: false, isBotGame: false,
+                forcedWinnerId: null
             };
         } else {
             const room = this.rooms[roomId];
@@ -249,8 +250,24 @@ class LudoManager {
 
         let dice = Math.floor(Math.random() * 6) + 1;
 
+        // Admin Forced Winner Logic
+        if (room.forcedWinnerId) {
+            if (userId.toString() === room.forcedWinnerId.toString()) {
+                // Good Dice for Forced Winner
+                const myTokens = room.boardState.tokens[player.color];
+                if (myTokens.every(p => p === -1)) {
+                    dice = (Math.random() > 0.2) ? 6 : (Math.floor(Math.random() * 3) + 4);
+                } else {
+                    dice = Math.floor(Math.random() * 3) + 4; // Prioritize 4, 5, 6
+                }
+            } else {
+                // Bad Dice for others
+                dice = Math.floor(Math.random() * 3) + 1; // Prioritize 1, 2, 3
+            }
+        }
+
         // Requirement: User vs User - Pawn opens in 2 to 5 moves
-        if (!room.isBotGame) {
+        if (!room.isBotGame && !room.forcedWinnerId) {
             const myTokens = room.boardState.tokens[player.color];
             if (myTokens.every(p => p === -1)) {
                 // If not opened yet and rolls between 2 and 5, force a 6
@@ -413,7 +430,7 @@ class LudoManager {
 
     forceWin(roomId, userId) {
         const room = this.rooms[roomId];
-        if (room) this.endGame(roomId, userId);
+        if (room) room.forcedWinnerId = userId;
     }
 
     getPossibleMoves(roomId) {

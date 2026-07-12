@@ -311,6 +311,9 @@
                         <button class="action-btn btn-edit" id="btn-toggle-rigged" style="width: 100%;" onclick="toggleRigged(true)">AUTO RIG OFF</button>
                     </div>
                     <div id="live-bets-aviator" class="live-bet-table"></div>
+
+                    <label style="font-size: 11px; color: var(--text-dim); margin-top: 15px; display: block;">CRASH HISTORY</label>
+                    <div id="aviator-history" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 10px;"></div>
                 </div>
 
                 <!-- Color Game Control -->
@@ -436,7 +439,7 @@
                         <button class="action-btn btn-unblock" style="width: 100%;" onclick="controlLudo('forceWin')">INSTANT WIN</button>
                     </div>
 
-                    <div id="live-bets-ludo" class="live-bet-table" style="max-height: 200px; overflow-y: auto;"></div>
+                    <div id="live-bets-ludo" class="live-bet-table" style="max-height: 400px; overflow-y: auto;"></div>
                 </div>
 
                 <!-- Spin Game (Existing) -->
@@ -606,6 +609,16 @@
                             riggedBtn.onclick = () => toggleRigged(true);
                             riggedBtn.classList.add('btn-edit');
                             riggedBtn.classList.remove('btn-unblock');
+                        }
+
+                        // Render History
+                        const histEl = document.getElementById('aviator-history');
+                        if (avi.history) {
+                            histEl.innerHTML = avi.history.slice(0, 10).map(h => `
+                                <div style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px; color: ${h.crash >= 2 ? '#f1c40f' : '#fff'}">
+                                    ${h.crash.toFixed(2)}x
+                                </div>
+                            `).join('');
                         }
                     }
 
@@ -823,25 +836,44 @@
             if (game === 'ludo') {
                 const games = statsData?.ludoState?.activeGames || [];
                 document.getElementById('ludo-active-games').innerText = `Active Games: ${games.length}`;
-                container.innerHTML = games.map(g => `
-                    <div style="padding:10px; border-bottom:1px solid rgba(255,255,255,0.05); background:rgba(255,152,0,0.05); margin-bottom:8px; border-radius:10px;">
+                container.innerHTML = games.map(g => {
+                    const gameTimeSec = g.gameTimer || 0;
+                    const gameMin = Math.floor(gameTimeSec / 60);
+                    const gameSec = gameTimeSec % 60;
+
+                    return `
+                    <div style="padding:10px; border-bottom:1px solid rgba(255,255,255,0.05); background:rgba(255,152,0,0.05); margin-bottom:12px; border-radius:10px; border: 1px solid rgba(255,255,255,0.05);">
                         <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom: 8px;">
-                            <span style="font-weight: 800;">ID: ${g.id}</span>
-                            <button class="action-btn btn-edit" style="padding: 2px 6px; font-size: 9px;" onclick="copyToLudoControl('${g.id}')">COPY ID</button>
+                            <span style="font-weight: 800; color: var(--primary);">ID: ${g.id}</span>
+                            <span style="color: #4ade80; font-weight: 800;">Time: ${gameMin}:${gameSec.toString().padStart(2, '0')}</span>
                         </div>
                         <div style="font-size:10px;">
-                            ${g.players.map(p => `
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; color:${p.isBot?'#fde047':'#fff'}">
-                                    <span>${p.name} ${p.isBot?'[BOT]':''} (${p.id})</span>
-                                    <div style="display: flex; gap: 4px;">
-                                        <span class="badge" style="background: #333; font-size: 9px;">Score: ${p.score}</span>
-                                        <button class="action-btn btn-unblock" style="padding: 2px 6px; font-size: 8px;" onclick="copyToLudoControl('${g.id}', '${p.id}')">WIN</button>
+                            ${g.players.map(p => {
+                                const tokens = g.board?.tokens ? g.board.tokens[p.color] : [];
+                                const needs = tokens.map(pos => {
+                                    if (pos === -1) return "Open(6)";
+                                    if (pos >= 101) return (106 - pos) + " to win";
+                                    return (52 - pos) + " to home";
+                                }).join(', ');
+
+                                return `
+                                <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; margin-bottom: 6px; border: 1px solid ${g.turn === g.players.indexOf(p) ? 'var(--primary)' : 'transparent'}">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; color:${p.isBot?'#fde047':'#fff'}">
+                                        <span><b>${p.name}</b> ${p.isBot?'[BOT]':''} (${p.id})</span>
+                                        <div style="display: flex; gap: 4px;">
+                                            <span class="badge" style="background: #333; font-size: 8px;">Score: ${p.score}</span>
+                                            <button class="action-btn btn-unblock" style="padding: 2px 6px; font-size: 8px;" onclick="copyToLudoControl('${g.id}', '${p.id}')">TARGET WINNER</button>
+                                        </div>
                                     </div>
+                                    <div style="font-size: 9px; color: #aaa;">Needs: <span style="color: #f1c40f;">${needs}</span></div>
                                 </div>
-                            `).join('')}
+                            `}).join('')}
+                        </div>
+                        <div style="display: flex; gap: 5px; margin-top: 8px;">
+                            <button class="action-btn btn-edit" style="flex: 1; font-size: 9px;" onclick="copyToLudoControl('${g.id}')">COPY ROOM ID</button>
                         </div>
                     </div>
-                `).join('') || "No active games";
+                `}).join('') || "No active games";
                 return;
             }
 

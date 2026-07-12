@@ -934,10 +934,10 @@ app.get("/api/admin/stats", adminAuth, async (req, res) => {
             activeGames: Object.values(ludoManager.rooms).map(r => ({
                 id: r.id,
                 players: r.players,
-                scores: r.scores,
                 gameState: r.gameState,
-                timer: r.timer,
-                turn: r.turn
+                gameTimer: r.gameTimer,
+                turn: r.turn,
+                board: r.boardState
             }))
         };
 
