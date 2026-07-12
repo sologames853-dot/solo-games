@@ -281,7 +281,7 @@
             <h2 style="margin-top: 0; margin-bottom: 30px;">Live Operations</h2>
             <div class="stat-grid">
                 <div class="stat-card users"><h4>Users (Total)</h4><div class="value" id="stat-totalUsers">0</div></div>
-                <div class="stat-card users"><h4>Online (Real)</h4><div class="value" id="stat-onlineUsers" style="color: #10b981;">0</div></div>
+                <div class="stat-card users"><h4>Online (Real)</h4><div class="value" id="stat-onlineUsers" style="color: #10b981;">0</div><div id="stat-onlineUserList" style="font-size: 10px; margin-top: 10px; max-height: 100px; overflow-y: auto; line-height: 1.4;"></div></div>
                 <div class="stat-card coins"><h4>Total Coins</h4><div class="value" id="stat-totalCoins">0</div></div>
                 <div class="stat-card profit"><h4>Admin Profit</h4><div class="value" id="stat-adminWallet">0</div></div>
             </div>
@@ -549,6 +549,14 @@
                     const s = data.stats;
                     document.getElementById('stat-totalUsers').innerText = s.totalUsers;
                     document.getElementById('stat-onlineUsers').innerText = s.onlineUsers || 0;
+
+                    const userListEl = document.getElementById('stat-onlineUserList');
+                    if (s.onlineUserList && s.onlineUserList.length > 0) {
+                        userListEl.innerHTML = s.onlineUserList.map(u => `<div>${u.name} <span style="opacity:0.6">[${u.game}]</span></div>`).join('');
+                    } else {
+                        userListEl.innerHTML = '<div style="opacity:0.5">No active users</div>';
+                    }
+
                     document.getElementById('stat-totalCoins').innerText = s.totalCoins.toLocaleString();
                     document.getElementById('stat-adminWallet').innerText = s.adminWalletBalance.toLocaleString();
 

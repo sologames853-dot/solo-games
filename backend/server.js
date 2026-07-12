@@ -960,10 +960,32 @@ app.get("/api/admin/stats", adminAuth, async (req, res) => {
         };
 
         const totalUsers = await User.countDocuments({});
-        const onlineUsers = await User.countDocuments({ last_seen: { $gt: new Date(Date.now() - 5 * 60 * 1000) } });
-        const totalCoinsAgg = await User.aggregate([{ $group: { _id: null, total: { $sum: "$coins" } } }]);
+
+        // Detailed Online Users
+        const onlineUserDocs = await User.find({
+            last_seen: { $gt: new Date(Date.now() - 5 * 60 * 1000) }
+        }).select("name");
+
+        const onlineUserList = onlineUserDocs.map(u => {
+            let currentGame = "Online";
+            const uid = u._id.toString();
+
+            if (activeBets.aviator.some(b => b.userId.toString() === uid)) currentGame = "Aviator";
+            else if (colorGameManager.getLiveBets().some(b => b.userId.toString() === uid)) currentGame = "Color Game";
+            else if (luckyDrawManager.bets.some(b => b.userId.toString() === uid)) currentGame = "Lucky Draw";
+            else if (spinGameManager.bets.some(b => b.userId.toString() === uid)) currentGame = "Spin Game";
+            else if (numberSpinManager.bets.some(b => b.userId.toString() === uid)) currentGame = "Number Spin";
+            else if (bigSmallState.bets.some(b => b.userId.toString() === uid)) currentGame = "Big Small";
+            else if (Object.values(ludoManager.rooms).some(r => r.players.some(p => p.id === uid))) currentGame = "Ludo";
+            else if (rummyManager.getTables().some(t => Object.keys(t.players).includes(uid))) currentGame = "Rummy";
+            else if (teenPattiManager.getTables(null, true).some(t => Object.keys(t.players).includes(uid))) currentGame = "Teen Patti";
+
+            return { name: u.name, game: currentGame };
+        });
+
         stats.totalUsers = totalUsers;
-        stats.onlineUsers = onlineUsers;
+        stats.onlineUsers = onlineUserList.length;
+        stats.onlineUserList = onlineUserList;
         stats.totalCoins = totalCoinsAgg.length > 0 ? totalCoinsAgg[0].total : 0;
 
         const admin = await Admin.findOne({});
