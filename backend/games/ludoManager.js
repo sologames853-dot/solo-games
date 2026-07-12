@@ -36,7 +36,18 @@ class LudoManager {
                 room.gameTimer--;
 
                 const now = Date.now();
-                // Anti-Stuck: If turn is taking too long (over 20s), force timeout
+
+                // Handle Disconnected players (30s timeout)
+                room.players.forEach(p => {
+                    if (p.disconnectedAt && !p.isBot) {
+                        const disconnectTime = (now - p.disconnectedAt) / 1000;
+                        if (disconnectTime >= 30) {
+                            this.endGameByForfeit(roomId, p.id);
+                        }
+                    }
+                });
+
+                // Anti-Stuck: If turn is taking too long (over 15s + buffer), force timeout
                 if (room.turnDeadline && now > room.turnDeadline + 2000) {
                     this.handleTimeout(roomId);
                 }
@@ -48,12 +59,19 @@ class LudoManager {
                 if (room.gameTimer <= 0) this.endGameByScore(roomId);
             } else if (room.gameState === 'WAITING') {
                 room.waitingTime++;
-                if (room.waitingTime >= 3) this.addBot(roomId);
+                if (room.waitingTime >= 10) this.addBot(roomId); // Changed to 10 seconds
             }
         }
     }
 
-    addBot(roomId) {
+    async endGameByForfeit(roomId, loserId) {
+        const room = this.rooms[roomId];
+        if (!room) return;
+        const winner = room.players.find(p => p.id !== loserId);
+        if (winner) this.endGame(roomId, winner.id, "Opponent left the game");
+    }
+
+    async addBot(roomId) {
         const room = this.rooms[roomId];
         if (!room || room.players.length >= 2 || room.gameState === 'PLAYING') return;
 
@@ -67,11 +85,12 @@ class LudoManager {
 
         room.players.push({
             id: botId, name: botName, avatar: botAvatar, socketId: null,
-            isBot: true, color: botColor, score: 0, misses: 0, rolls: 0
+            isBot: true, color: botColor, score: 0, misses: 0, rolls: 0, skips: 0
         });
 
         room.boardState.tokens[botColor] = [-1, -1, -1, -1];
         room.gameState = 'PLAYING';
+        room.isBotGame = true;
         this.startGame(roomId);
     }
 
@@ -80,19 +99,54 @@ class LudoManager {
         const name = socket.user.name;
         const avatar = socket.user.avatar;
 
-        // Check if user is already in a waiting room and update it
-        let existingRoomId = Object.keys(this.rooms).find(id =>
+        // Reconnection logic
+        let reconnectRoomId = Object.keys(this.rooms).find(id =>
+            this.rooms[id].players.some(p => p.id === userId.toString() && p.disconnectedAt)
+        );
+
+        if (reconnectRoomId) {
+            const room = this.rooms[reconnectRoomId];
+            const player = room.players.find(p => p.id === userId.toString());
+            player.socketId = socket.id;
+            player.disconnectedAt = null;
+            socket.join(reconnectRoomId);
+            this.emitState(reconnectRoomId);
+            this.io.to(reconnectRoomId).emit('player_reconnected', { userId: player.id });
+            return;
+        }
+
+        // Refund check: if already in a WAITING room, just update socket (no extra charge)
+        let waitingRoomId = Object.keys(this.rooms).find(id =>
             this.rooms[id].gameState === 'WAITING' &&
             this.rooms[id].players.some(p => p.id === userId.toString())
         );
 
-        if (existingRoomId) {
-            const room = this.rooms[existingRoomId];
+        if (waitingRoomId) {
+            const room = this.rooms[waitingRoomId];
             room.players[0].socketId = socket.id;
-            socket.join(existingRoomId);
-            this.emitState(existingRoomId);
+            socket.join(waitingRoomId);
+            this.emitState(waitingRoomId);
             return;
         }
+
+        // Charge the user
+        try {
+            const user = await User.findById(userId);
+            if (user.coins < stake) {
+                socket.emit('error_message', { message: "Insufficient coins" });
+                return;
+            }
+            user.coins -= stake;
+            await user.save();
+
+            await new Transaction({
+                user_id: userId,
+                amount: -stake,
+                type: 'game_loss', // Using game_loss as 'spent'
+                game_name: 'Ludo',
+                details: `Joined Ludo match (Stake: ${stake})`
+            }).save();
+        } catch (e) { return; }
 
         let roomId = Object.keys(this.rooms).find(id =>
             this.rooms[id].gameState === 'WAITING' &&
@@ -107,12 +161,12 @@ class LudoManager {
                 id: roomId, stake: stake,
                 players: [{
                     id: userId.toString(), name, avatar, socketId: socket.id,
-                    isBot: false, color: color, score: 0, misses: 0, rolls: 0
+                    isBot: false, color: color, score: 0, misses: 0, rolls: 0, skips: 0
                 }],
                 gameState: 'WAITING', waitingTime: 0,
                 boardState: { tokens: { [color]: [-1, -1, -1, -1] } },
                 turn: 0, dice: 1, rolled: false, gameTimer: this.GAME_DURATION, lastUpdate: Date.now(),
-                consecutiveSixes: 0, userGotSix: false
+                consecutiveSixes: 0, userGotSix: false, isBotGame: false
             };
         } else {
             const room = this.rooms[roomId];
@@ -123,10 +177,11 @@ class LudoManager {
 
             room.players.push({
                 id: userId.toString(), name, avatar, socketId: socket.id,
-                isBot: false, color: myColor, score: 0, misses: 0, rolls: 0
+                isBot: false, color: myColor, score: 0, misses: 0, rolls: 0, skips: 0
             });
             room.boardState.tokens[myColor] = [-1, -1, -1, -1];
             room.gameState = 'PLAYING';
+            room.isBotGame = false;
             room.turn = Math.floor(Math.random() * 2);
             room.consecutiveSixes = 0;
             this.startGame(roomId);
@@ -155,7 +210,7 @@ class LudoManager {
         const room = this.rooms[roomId];
         if (!room) return;
         if (room.timer) clearTimeout(room.timer);
-        room.turnDeadline = Date.now() + 15000;
+        room.turnDeadline = Date.now() + 15000; // 15 seconds
         room.timer = setTimeout(() => this.handleTimeout(roomId), 15500);
     }
 
@@ -169,7 +224,21 @@ class LudoManager {
         else this.nextTurn(roomId);
     }
 
-    rollDice(userId, roomId) {
+    async skipTurn(userId, roomId) {
+        const room = this.rooms[roomId];
+        if (!room || room.gameState !== 'PLAYING') return;
+        const playerIndex = room.turn;
+        if (room.players[playerIndex].id !== userId.toString()) return;
+
+        const player = room.players[playerIndex];
+        if (player.skips >= 3) return; // Limit to 3 skips
+
+        player.skips++;
+        this.io.to(roomId).emit('turn_skipped', { userId: player.id, skips: player.skips });
+        this.nextTurn(roomId);
+    }
+
+    async rollDice(userId, roomId) {
         const room = this.rooms[roomId];
         if (!room || room.gameState !== 'PLAYING' || room.rolled) return;
         const playerIndex = room.turn;
@@ -180,51 +249,67 @@ class LudoManager {
 
         let dice = Math.floor(Math.random() * 6) + 1;
 
-        // Logic: Subtle Bot Win (User vs Bot)
+        // Requirement: User vs User - Pawn opens in 2 to 5 moves
+        if (!room.isBotGame) {
+            const myTokens = room.boardState.tokens[player.color];
+            if (myTokens.every(p => p === -1)) {
+                // If not opened yet and rolls between 2 and 5, force a 6
+                if (player.rolls >= 2 && player.rolls <= 5) {
+                    const prob = (player.rolls - 1) * 0.25; // Gradual increase
+                    if (Math.random() < prob || player.rolls === 5) dice = 6;
+                }
+            }
+        }
+
+        // Requirement: User vs Bot - Win(1) - Loss(2) Pattern
+        if (room.isBotGame) {
+            try {
+                const userObj = room.players.find(p => !p.isBot);
+                const user = await User.findById(userObj.id);
+                const botGameCount = user.ludo_bot_game_count || 0;
+
+                // Pattern: 1: User Win, 2: Bot Win, 3: Bot Win, 4: User Win...
+                const cyclePos = botGameCount % 3; // 0: User Win, 1: Bot Win, 2: Bot Win
+
+                if (cyclePos === 0) {
+                    // User Win logic
+                    if (player.isBot) {
+                        // Make bot play bad
+                        if (dice === 6 && Math.random() > 0.4) dice = 5;
+                    } else {
+                        // Make user play good
+                        if (room.boardState.tokens[player.color].every(p => p === -1) && player.rolls >= 2) dice = 6;
+                    }
+                } else {
+                    // Bot Win logic
+                    if (player.isBot) {
+                        // Bot turn: Start fast
+                        if (room.boardState.tokens[player.color].every(p => p === -1)) {
+                             if (Math.random() > 0.1) dice = 6;
+                        }
+                    } else {
+                        // User turn: Don't give 6 easily
+                        if (room.boardState.tokens[player.color].every(p => p === -1) && dice === 6) {
+                            if (Math.random() > 0.2) dice = 5;
+                        }
+                    }
+                }
+            } catch (e) {}
+        }
+
+        // Logic: Subtle Bot Win (Existing refinements)
         const hasBot = room.players.some(p => p.isBot);
         if (hasBot) {
             if (player.isBot) {
                 // Bot turn:
-                // 1. High probability of 6 if all tokens in base
                 const myTokens = room.boardState.tokens[player.color];
                 if (myTokens.every(p => p === -1)) {
-                    if (Math.random() > 0.05) dice = 6; // 95% chance of getting 6 to start
+                    if (Math.random() > 0.1) dice = 6;
                 } else {
-                    // 2. Try to roll a number that kills user
                     for (let d = 1; d <= 6; d++) {
                         if (this.checkMoveKills(room, player.color, -2, d)) {
-                            dice = d;
-                            break;
+                            dice = d; break;
                         }
-                    }
-                    // 3. High chance of big numbers if bot is behind
-                    const userPlayer = room.players.find(p => !p.isBot);
-                    if (player.score < userPlayer.score - 5 && dice < 4 && Math.random() > 0.5) {
-                        dice = 4 + Math.floor(Math.random() * 3);
-                    }
-                }
-            } else {
-                // User turn:
-                // 1. Give 6 in first 3 rolls if not already got one
-                if (player.rolls <= 3 && !room.userGotSix) {
-                    if (player.rolls === 3 || Math.random() > 0.5) {
-                        dice = 6;
-                        room.userGotSix = true;
-                    }
-                }
-
-                // 2. Subtle adjustments (anti-kill for bot)
-                if (this.checkKillPotential(room, player.color, dice)) {
-                    if (Math.random() > 0.7) dice = (dice % 5) + 1;
-                }
-
-                // 3. If user is close to winning, make it harder
-                const myTokens = room.boardState.tokens[player.color];
-                const winningToken = myTokens.find(p => p > 50 && p < 57);
-                if (winningToken) {
-                    const dist = 57 - winningToken;
-                    if (dice >= dist && Math.random() > 0.4) {
-                         dice = Math.max(1, dist - 1);
                     }
                 }
             }
@@ -472,7 +557,7 @@ class LudoManager {
         if (winner) this.endGame(roomId, winner.id);
     }
 
-    async endGame(roomId, winnerId) {
+    async endGame(roomId, winnerId, reason = "") {
         const room = this.rooms[roomId];
         if (!room || room.gameState === 'FINISHED') return;
         room.gameState = 'FINISHED';
@@ -482,17 +567,27 @@ class LudoManager {
         const stake = room.stake;
         const prize = stake * 1.8;
         const winner = room.players.find(p => p.id === winnerId.toString());
+
+        // Update Bot Game Counter for pattern if it was a bot game
+        if (room.isBotGame) {
+            try {
+                const userObj = room.players.find(p => !p.isBot);
+                // Increment bot game counter
+                await User.findByIdAndUpdate(userObj.id, { $inc: { ludo_bot_game_count: 1 } });
+            } catch (e) {}
+        }
+
         if (winner && !winner.isBot) {
             try {
                 await User.findByIdAndUpdate(winnerId, { $inc: { coins: prize } });
                 await new Transaction({
                     user_id: winnerId, amount: prize, type: 'game_win',
-                    game_name: 'Ludo', details: `Won Ludo match (Stake: ${stake})`
+                    game_name: 'Ludo', details: `Won Ludo match (Stake: ${stake}) ${reason}`
                 }).save();
                 await Admin.findOneAndUpdate({}, { $inc: { balance: -(prize - stake) } });
             } catch (e) { console.error("Ludo Win error:", e); }
         }
-        this.io.to(roomId).emit('game_over', { winnerId, prize, scores: room.players.map(p => p.score) });
+        this.io.to(roomId).emit('game_over', { winnerId, prize, scores: room.players.map(p => p.score), reason });
         setTimeout(() => delete this.rooms[roomId], 5000);
     }
 
@@ -501,23 +596,36 @@ class LudoManager {
         if (!room) return;
         this.io.to(roomId).emit('ludo_state', {
             id: room.id,
-            players: room.players.map(p => ({ id: p.id, name: p.name, avatar: p.avatar, color: p.color, score: p.score, misses: p.misses, isBot: p.isBot })),
+            players: room.players.map(p => ({
+                id: p.id, name: p.name, avatar: p.avatar, color: p.color,
+                score: p.score, misses: p.misses, isBot: p.isBot,
+                skips: p.skips, isDisconnected: !!p.disconnectedAt
+            })),
             gameState: room.gameState, board: room.boardState,
             turn: room.turn, dice: room.dice, rolled: room.rolled,
             turnDeadline: room.turnDeadline, gameTimer: room.gameTimer
         });
     }
 
-    handleDisconnect(socketId) {
+    async handleDisconnect(socketId) {
         const roomId = Object.keys(this.rooms).find(id =>
             this.rooms[id].players.some(p => p.socketId === socketId)
         );
         if (roomId) {
             const room = this.rooms[roomId];
+            const player = room.players.find(p => p.socketId === socketId);
+
             if (room.gameState === 'PLAYING') {
-                const opponent = room.players.find(p => p.socketId !== socketId);
-                if (opponent) this.endGame(roomId, opponent.id);
-            } else delete this.rooms[roomId];
+                // Instead of ending immediately, mark as disconnected
+                player.disconnectedAt = Date.now();
+                this.io.to(roomId).emit('player_disconnected', { userId: player.id });
+            } else if (room.gameState === 'WAITING') {
+                // Refund if left before game started
+                try {
+                    await User.findByIdAndUpdate(player.id, { $inc: { coins: room.stake } });
+                } catch (e) {}
+                delete this.rooms[roomId];
+            }
         }
     }
 

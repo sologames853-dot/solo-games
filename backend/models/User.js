@@ -25,6 +25,7 @@ const UserSchema = new mongoose.Schema({
         ifsc_code: { type: String, default: "" }
     },
     lucky_draw_streak: { type: Number, default: 0 },
+    ludo_bot_game_count: { type: Number, default: 0 },
     last_seen: { type: Date, default: Date.now },
     created_at: { type: Date, default: Date.now }
 });

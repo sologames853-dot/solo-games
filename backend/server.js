@@ -1397,24 +1397,12 @@ io.on("connection", async (socket) => {
 
         // Ludo Handlers
         socket.on('ludo_join', async (data) => {
-            const user = await User.findById(socket.user.id);
-            if (user.coins < data.amount) return socket.emit('error_msg', { message: "Insufficient coins" });
-
-            user.coins -= data.amount;
-            await user.save();
-
-            await new Transaction({
-                user_id: user._id,
-                amount: -data.amount,
-                type: 'game_loss',
-                game_name: 'Ludo',
-                details: `Joined Ludo match (Stake: ${data.amount})`
-            }).save();
-
-            ludoManager.joinRoom(socket, user._id, data.amount);
+            // Only initiate join, manager will handle deduction/refund check
+            ludoManager.joinRoom(socket, socket.user.id, data.amount);
         });
 
         socket.on('ludo_roll', (data) => ludoManager.rollDice(socket.user.id, data.roomId));
+        socket.on('ludo_skip', (data) => ludoManager.skipTurn(socket.user.id, data.roomId));
         socket.on('ludo_move', (data) => ludoManager.moveToken(socket.user.id, data.roomId, data.tokenIndex));
         socket.on('ludo_chat', (data) => ludoManager.handleChat(socket, data.roomId, data.message, data.emoji));
 

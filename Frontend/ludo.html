@@ -36,7 +36,12 @@
         /* Board Area */
         .game-area { flex: 1; width: 100%; max-width: 500px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; padding: 10px 10px 100px 10px; overflow: hidden; gap: 20px; }
 
-        .player-bar { width: 92%; display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; background: rgba(255,255,255,0.1); border-radius: 20px; border: 1px solid rgba(255,255,255,0.15); backdrop-filter: blur(5px); }
+        .player-bar { width: 92%; display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; background: rgba(255,255,255,0.1); border-radius: 20px; border: 1px solid rgba(255,255,255,0.15); backdrop-filter: blur(5px); position: relative; }
+        .turn-timer { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); background: #f1c40f; color: black; padding: 2px 10px; border-radius: 10px; font-weight: 900; font-size: 10px; display: none; z-index: 1000; box-shadow: 0 0 10px rgba(241,196,15,0.5); }
+        .turn-timer.active { display: block; }
+        .skip-btn { background: #ef4444; color: white; border: none; padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 800; cursor: pointer; margin-top: 5px; display: none; }
+        .skip-btn.active { display: block; }
+        .disconnected-badge { background: #666; color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); }
         .profile { display: flex; align-items: center; gap: 12px; }
         .avatar { width: 45px; height: 45px; border-radius: 50%; border: 2px solid #fff; object-fit: cover; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
         .score-circle { width: 45px; height: 45px; border-radius: 50%; background: #fff; border: 2px solid #333; color: #333; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 900; flex-shrink: 0; }
@@ -180,6 +185,7 @@
 
     <div class="game-area">
         <div class="player-bar" id="opp-bar">
+            <div class="turn-timer" id="opp-turn-timer">15s</div>
             <div class="profile">
                 <img id="opp-avatar" src="" class="avatar" alt="Opponent">
                 <div>
@@ -191,11 +197,13 @@
                 <div style="font-size: 9px;">SCORE</div>
                 <div id="opp-score">0</div>
             </div>
+            <div id="opp-disconnected" class="disconnected-badge" style="display: none;">DISCONNECTED</div>
         </div>
 
         <div class="ludo-board" id="board"></div>
 
         <div class="player-bar" id="my-bar">
+            <div class="turn-timer" id="my-turn-timer">15s</div>
             <div class="score-circle" id="my-score-circle">
                 <div style="font-size: 9px;">SCORE</div>
                 <div id="my-score">0</div>
@@ -204,9 +212,16 @@
                 <img id="my-avatar" src="" class="avatar" alt="Me">
                 <div>
                     <div id="my-name" style="font-weight: 800; font-size: 12px; white-space: nowrap;">You</div>
-                    <div id="diceBtn" class="dice-wrap" onclick="rollDice()"><i class="fas fa-dice-one"></i></div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-direction: row-reverse;">
+                        <div id="diceBtn" class="dice-wrap" onclick="rollDice()"><i class="fas fa-dice-one"></i></div>
+                        <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                            <button id="skipBtn" class="skip-btn" onclick="skipTurn()">SKIP</button>
+                            <div id="skip-count" style="font-size: 8px; opacity: 0.7; margin-top: 2px;">Skips: 3</div>
+                        </div>
+                    </div>
                 </div>
             </div>
+            <div id="my-disconnected" class="disconnected-badge" style="display: none;">DISCONNECTED</div>
         </div>
     </div>
 
@@ -402,13 +417,38 @@
         function sendChat() { const i = document.getElementById('chatInput'); if(i.value) { socket.emit('ludo_chat', { roomId: currentRoom, message: i.value }); i.value = ''; } }
         function sendEmoji(e) { socket.emit('ludo_chat', { roomId: currentRoom, emoji: e }); }
 
+        function skipTurn() {
+            if (!gameState || gameState.turn !== myPlayerIndex || isMoving) return;
+            socket.emit('ludo_skip', { roomId: currentRoom });
+        }
+
         socket.on('ludo_state', (state) => {
             gameState = state; currentRoom = state.id;
-            if (state.gameState === 'PLAYING') document.getElementById('search-overlay').style.display = 'none';
+            if (state.gameState === 'PLAYING') {
+                document.getElementById('search-overlay').style.display = 'none';
+            }
             updateUI(state);
         });
 
-        socket.on('ludo_timer', (data) => { const min = Math.floor(data.gameTimer / 60); const sec = data.gameTimer % 60; document.getElementById('game-clock').innerText = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`; });
+        socket.on('ludo_timer', (data) => {
+            const min = Math.floor(data.gameTimer / 60);
+            const sec = data.gameTimer % 60;
+            document.getElementById('game-clock').innerText = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+
+            // Turn Timer update
+            const myTimer = document.getElementById('my-turn-timer');
+            const oppTimer = document.getElementById('opp-turn-timer');
+
+            if (gameState && gameState.turn === myPlayerIndex) {
+                myTimer.innerText = data.turnDeadline + "s";
+                myTimer.classList.add('active');
+                oppTimer.classList.remove('active');
+            } else {
+                oppTimer.innerText = data.turnDeadline + "s";
+                oppTimer.classList.add('active');
+                myTimer.classList.remove('active');
+            }
+        });
 
         socket.on('dice_rolled', (data) => {
             const icons = ["one", "two", "three", "four", "five", "six"];
@@ -443,6 +483,35 @@
                     }, 800);
                 }
             }, 800);
+        });
+
+        socket.on('turn_skipped', (data) => {
+            const b = document.createElement('div'); b.className = 'chat-bubble';
+            const name = data.userId === myId?.toString() ? "You" : (gameState.players.find(p => p.id === data.userId)?.name || "Opponent");
+            b.innerText = `${name} skipped turn (${data.skips}/3)`;
+            const ui = document.getElementById('chat-ui'); ui.appendChild(b);
+            setTimeout(() => b.remove(), 4000);
+        });
+
+        socket.on('turn_missed', (data) => {
+            const b = document.createElement('div'); b.className = 'chat-bubble';
+            const name = data.userId === myId?.toString() ? "You" : (gameState.players.find(p => p.id === data.userId)?.name || "Opponent");
+            b.innerText = `${name} missed turn! (${data.misses}/3)`;
+            b.style.borderLeftColor = "#ef4444";
+            const ui = document.getElementById('chat-ui'); ui.appendChild(b);
+            setTimeout(() => b.remove(), 4000);
+        });
+
+        socket.on('player_disconnected', (data) => {
+            if (data.userId !== myId?.toString()) {
+                document.getElementById('opp-disconnected').style.display = 'block';
+            }
+        });
+
+        socket.on('player_reconnected', (data) => {
+            if (data.userId !== myId?.toString()) {
+                document.getElementById('opp-disconnected').style.display = 'none';
+            }
         });
 
         socket.on('token_moved', async (data) => {
@@ -551,12 +620,30 @@
             document.getElementById('opp-name').innerText = opp.name;
             document.getElementById('opp-avatar').src = opp.avatar?.startsWith('http') ? opp.avatar : (opp.avatar ? `${API_URL}/uploads/${opp.avatar}` : 'https://i.pravatar.cc/100?u=opp');
             document.getElementById('opp-score').innerText = opp.score;
+            document.getElementById('opp-disconnected').style.display = opp.isDisconnected ? 'block' : 'none';
+            document.getElementById('my-disconnected').style.display = me.isDisconnected ? 'block' : 'none';
 
             const myDice = document.getElementById('diceBtn');
+            const skipBtn = document.getElementById('skipBtn');
+            const skipCount = document.getElementById('skip-count');
             const oppDice = document.getElementById('opp-dice');
+
             myDice.style.borderColor = `var(--${colorNames[me.color]}-main)`;
             oppDice.style.borderColor = `var(--${colorNames[opp.color]}-main)`;
-            if (state.turn === myPlayerIndex) myDice.classList.add('active'); else myDice.classList.remove('active');
+
+            if (state.turn === myPlayerIndex) {
+                myDice.classList.add('active');
+                if (!state.rolled) {
+                    skipBtn.classList.add('active');
+                    skipBtn.disabled = me.skips >= 3;
+                    skipCount.innerText = `Skips: ${3 - me.skips}`;
+                } else {
+                    skipBtn.classList.remove('active');
+                }
+            } else {
+                myDice.classList.remove('active');
+                skipBtn.classList.remove('active');
+            }
 
             document.getElementById('my-score-circle').style.borderColor = `var(--${colorNames[me.color]}-main)`;
             document.getElementById('opp-score-circle').style.borderColor = `var(--${colorNames[opp.color]}-main)`;
