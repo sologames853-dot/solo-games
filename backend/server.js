@@ -665,12 +665,20 @@ async function startAviatorFlight() {
                     // Admin Rigged ON: Crash between 1.02 and 1.43
                     aviatorState.crashMultiplier = 1.02 + (Math.random() * 0.41);
                 } else {
-                    // Admin Rigged OFF: Crash between 1.06 and 3.23, mostly 2.00 or 2.01
-                    const rand = Math.random();
-                    if (rand < 0.6) {
-                        aviatorState.crashMultiplier = Math.random() > 0.5 ? 2.00 : 2.01;
+                    // Admin Rigged OFF: 50% rounds are low crash (User loss control)
+                    if (aviatorState.realRoundCounter % 2 === 0) {
+                        // Force low crash (1.01x - 1.18x) 2 out of 4 times
+                        aviatorState.crashMultiplier = 1.01 + (Math.random() * 0.17);
                     } else {
-                        aviatorState.crashMultiplier = 1.06 + (Math.random() * (3.23 - 1.06));
+                        // Random crash between 1.03x and 3.23x
+                        const rand = Math.random();
+                        if (rand < 0.20) {
+                            // 20% chance of hitting exactly 2.00 or 2.01
+                            aviatorState.crashMultiplier = Math.random() > 0.5 ? 2.00 : 2.01;
+                        } else {
+                            // 80% chance of random value in range
+                            aviatorState.crashMultiplier = 1.03 + (Math.random() * (3.23 - 1.03));
+                        }
                     }
                 }
             }
