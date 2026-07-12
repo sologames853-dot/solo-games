@@ -583,7 +583,8 @@ let aviatorState = {
     cashoutBlocked: false,
     noBetStreak: 0,
     rareHighCounter: 0,
-    realRoundCounter: 0
+    realRoundCounter: 0,
+    adminRigged: false
 };
 
 function resetAviator() {
@@ -660,9 +661,18 @@ async function startAviatorFlight() {
                 aviatorState.noBetStreak = 0; // Reset streak when real players join
                 aviatorState.realRoundCounter++;
 
-                // Rigging: If real players bet, crash between 1.02 and 1.43 so they can't cash out
-                // Using Math.random to ensure it varies every time (Badal badal ke crash hoga)
-                aviatorState.crashMultiplier = 1.02 + (Math.random() * 0.41);
+                if (aviatorState.adminRigged) {
+                    // Admin Rigged ON: Crash between 1.02 and 1.43
+                    aviatorState.crashMultiplier = 1.02 + (Math.random() * 0.41);
+                } else {
+                    // Admin Rigged OFF: Crash between 1.06 and 3.23, mostly 2.00 or 2.01
+                    const rand = Math.random();
+                    if (rand < 0.6) {
+                        aviatorState.crashMultiplier = Math.random() > 0.5 ? 2.00 : 2.01;
+                    } else {
+                        aviatorState.crashMultiplier = 1.06 + (Math.random() * (3.23 - 1.06));
+                    }
+                }
             }
         }
 
@@ -1030,6 +1040,12 @@ app.post("/api/admin/aviator/toggle-cashout", adminAuth, (req, res) => {
     const { blocked } = req.body;
     aviatorState.cashoutBlocked = blocked;
     res.json({ success: true, message: `Cashout ${blocked ? 'Blocked' : 'Allowed'}` });
+});
+
+app.post("/api/admin/aviator/toggle-rigged", adminAuth, (req, res) => {
+    const { rigged } = req.body;
+    aviatorState.adminRigged = rigged;
+    res.json({ success: true, message: `Admin Rigging ${rigged ? 'Enabled' : 'Disabled'}` });
 });
 
 app.post("/api/admin/teenpatti/force-cards", adminAuth, (req, res) => {

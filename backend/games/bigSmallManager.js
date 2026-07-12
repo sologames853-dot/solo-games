@@ -113,7 +113,7 @@ class BigSmallManager {
     placeBet(userId, name, prediction, amount) {
         if (this.timer < 3) return { success: false, message: "Round starting" };
         const betAmount = Number(amount);
-        if (betAmount < 10) return { success: false, message: "Minimum bet is 10" };
+        if (betAmount < 1) return { success: false, message: "Minimum bet is 1" };
         if (betAmount > 5000) return { success: false, message: "Maximum bet is 5000" };
         this.bets.push({ userId, name, prediction: prediction.toUpperCase(), amount: betAmount });
         return { success: true };

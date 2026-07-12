@@ -138,7 +138,7 @@ class ColorGameManager {
     placeBet(userId, name, type, value, amount) {
         if (this.timer <= 5) return { success: false, message: "Round closing" };
         const betAmount = Number(amount);
-        if (betAmount < 10) return { success: false, message: "Minimum bet is 10" };
+        if (betAmount < 1) return { success: false, message: "Minimum bet is 1" };
         this.bets.push({ userId, name, type, value, amount: betAmount });
         return { success: true };
     }

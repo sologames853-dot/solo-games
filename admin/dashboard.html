@@ -305,6 +305,11 @@
                         <button class="action-btn btn-block" onclick="crashAviatorNow()">CRASH NOW</button>
                         <button class="action-btn btn-edit" id="btn-toggle-cashout" onclick="toggleCashout(true)">BLOCK CASHOUT</button>
                     </div>
+
+                    <label style="font-size: 11px; color: var(--text-dim); margin-top: 15px; display: block;">AUTO RIGGING (1.02x - 1.43x)</label>
+                    <div style="margin-top: 8px;">
+                        <button class="action-btn btn-edit" id="btn-toggle-rigged" style="width: 100%;" onclick="toggleRigged(true)">AUTO RIG OFF</button>
+                    </div>
                     <div id="live-bets-aviator" class="live-bet-table"></div>
                 </div>
 
@@ -581,6 +586,19 @@
                             cashoutBtn.classList.add('btn-edit');
                             cashoutBtn.classList.remove('btn-unblock');
                         }
+
+                        const riggedBtn = document.getElementById('btn-toggle-rigged');
+                        if (avi.adminRigged) {
+                            riggedBtn.innerText = "AUTO RIG ON (1.02-1.43)";
+                            riggedBtn.onclick = () => toggleRigged(false);
+                            riggedBtn.classList.remove('btn-edit');
+                            riggedBtn.classList.add('btn-unblock');
+                        } else {
+                            riggedBtn.innerText = "AUTO RIG OFF (NORMAL)";
+                            riggedBtn.onclick = () => toggleRigged(true);
+                            riggedBtn.classList.add('btn-edit');
+                            riggedBtn.classList.remove('btn-unblock');
+                        }
                     }
 
                     if (s.colorState) {
@@ -838,7 +856,13 @@
             container.innerHTML = `<div style="margin-bottom:8px; display:flex; justify-content:space-between"><span>Players: ${bets.length}</span> <span style="color:var(--primary)">₹${total}</span></div>`;
             if (bets.length > 0) {
                 container.innerHTML += `<div style="max-height:80px; overflow-y:auto; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
-                    ${bets.slice(0, 10).map(b => `<div style="font-size:10px; opacity:0.7; margin-bottom:3px;">${b.name}: ₹${game==='aviator' ? b.betAmount : (b.amount || 0)}</div>`).join('')}
+                    ${bets.slice(0, 10).map(b => {
+                        let extra = "";
+                        if (game === 'aviator') {
+                            extra = b.cashedOut ? ` <span style="color:#10b981">[CASHED: ${b.multiplier}x]</span>` : ` <span style="color:#ef4444">[FLYING]</span>`;
+                        }
+                        return `<div style="font-size:10px; opacity:0.7; margin-bottom:3px;">${b.name}: ₹${game==='aviator' ? b.betAmount : (b.amount || 0)}${extra}</div>`;
+                    }).join('')}
                     ${bets.length > 10 ? '<div style="font-size:9px; text-align:center;">...more...</div>' : ''}
                 </div>`;
             }
@@ -950,6 +974,21 @@
                 const btn = document.getElementById('btn-toggle-cashout');
                 btn.innerText = blocked ? "ALLOW CASHOUT" : "BLOCK CASHOUT";
                 btn.onclick = () => toggleCashout(!blocked);
+            }
+            alert(data.message);
+        }
+
+        async function toggleRigged(rigged) {
+            const res = await fetch(`${API_URL}/api/admin/aviator/toggle-rigged`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", authorization: token },
+                body: JSON.stringify({ rigged })
+            });
+            const data = await res.json();
+            if (data.success) {
+                const btn = document.getElementById('btn-toggle-rigged');
+                btn.innerText = rigged ? "AUTO RIG ON (1.02-1.43)" : "AUTO RIG OFF (NORMAL)";
+                btn.onclick = () => toggleRigged(!rigged);
             }
             alert(data.message);
         }

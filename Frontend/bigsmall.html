@@ -260,13 +260,13 @@
     <div class="bet-input-card">
         <div class="input-group">
             <span style="font-weight: 800;">Amount</span>
-            <input type="number" id="betAmount" value="100" min="10" max="5000">
+            <input type="number" id="betAmount" value="1" min="1" max="5000">
         </div>
         <div class="quick-amounts">
+            <button class="amt-btn" onclick="setAmt(1)">1</button>
             <button class="amt-btn" onclick="setAmt(100)">100</button>
             <button class="amt-btn" onclick="setAmt(500)">500</button>
             <button class="amt-btn" onclick="setAmt(1000)">1000</button>
-            <button class="amt-btn" onclick="setAmt(5000)">5000</button>
         </div>
         <div class="action-row">
             <button id="cancelBtn" class="btn-main btn-cancel" style="display: block; background: #ef4444; box-shadow: 0 4px 0 #991b1b;" onclick="cancelLastBet()">CANCEL LAST</button>
@@ -427,7 +427,7 @@
         async function placeBet() {
             if (!selectedValue) return alert("Select BIG, SMALL or TRIPLE");
             const amount = parseInt(document.getElementById("betAmount").value);
-            if (amount < 10 || amount > 5000) return alert("Bet must be between 10 and 5000");
+            if (amount < 1 || amount > 5000) return alert("Bet must be between 1 and 5000");
 
             const res = await fetch(`${API_URL}/api/game/bigsmall/bet`, {
                 method: "POST",
