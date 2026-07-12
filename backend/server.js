@@ -986,6 +986,8 @@ app.get("/api/admin/stats", adminAuth, async (req, res) => {
         stats.totalUsers = totalUsers;
         stats.onlineUsers = onlineUserList.length;
         stats.onlineUserList = onlineUserList;
+
+        const totalCoinsAgg = await User.aggregate([{ $group: { _id: null, total: { $sum: "$coins" } } }]);
         stats.totalCoins = totalCoinsAgg.length > 0 ? totalCoinsAgg[0].total : 0;
 
         const admin = await Admin.findOne({});
