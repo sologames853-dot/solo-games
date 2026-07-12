@@ -14,7 +14,7 @@ const UserSchema = new mongoose.Schema({
     referral_played: { type: Boolean, default: false }, // Has played at least one game
     total_deposited: { type: Number, default: 0 },
     referral_rewarded: { type: Boolean, default: false },
-    kyc_status: { type: String, default: "pending" }, // pending, verified, rejected
+    kyc_status: { type: String, default: "not_submitted" }, // not_submitted, pending, verified, rejected
     kyc_rejection_reason: { type: String, default: null },
     kyc_rejected_at: { type: Date, default: null },
     kyc_data: {

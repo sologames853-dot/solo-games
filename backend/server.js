@@ -234,8 +234,8 @@ app.post("/api/profile/update", auth, async (req, res) => {
 app.post("/api/kyc/submit", auth, async (req, res) => {
     try {
         const { fullName, aadharNo, panNo, accountNo, ifscCode } = req.body;
-        if (!fullName || !aadharNo || !panNo || !accountNo || !ifscCode) {
-            return res.json({ success: false, message: "All fields are required" });
+        if (!fullName || !aadharNo || !accountNo || !ifscCode) {
+            return res.json({ success: false, message: "Full Name, Aadhaar, Account No and IFSC are required" });
         }
 
         await User.findByIdAndUpdate(req.user.id, {
@@ -243,7 +243,7 @@ app.post("/api/kyc/submit", auth, async (req, res) => {
             kyc_data: {
                 full_name: fullName,
                 aadhar_no: aadharNo,
-                pan_no: panNo,
+                pan_no: panNo || "",
                 account_no: accountNo,
                 ifsc_code: ifscCode
             }

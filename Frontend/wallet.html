@@ -149,7 +149,7 @@
                 <div style="display: flex; flex-direction: column; gap: 12px;">
                     <input type="text" id="kycFullName" placeholder="Full Name (as per Bank)">
                     <input type="text" id="kycAadhar" placeholder="Aadhar Number">
-                    <input type="text" id="kycPan" placeholder="PAN Number">
+                    <input type="text" id="kycPan" placeholder="PAN Number (Optional)">
                     <input type="text" id="kycAccount" placeholder="Bank Account Number">
                     <input type="text" id="kycIfsc" placeholder="IFSC Code">
                     <button class="button-primary" style="width: 100%; height: 50px; margin-top: 10px;" onclick="submitKYC()">SUBMIT KYC FOR APPROVAL</button>
@@ -280,8 +280,8 @@
             const accountNo = document.getElementById('kycAccount').value;
             const ifscCode = document.getElementById('kycIfsc').value;
 
-            if (!fullName || !aadharNo || !panNo || !accountNo || !ifscCode) {
-                return alert("All fields are required for KYC");
+            if (!fullName || !aadharNo || !accountNo || !ifscCode) {
+                return alert("Full Name, Aadhaar, Account No and IFSC are required");
             }
 
             const res = await fetch(`${API_URL}/api/kyc/submit`, {
