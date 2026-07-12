@@ -252,17 +252,27 @@ class LudoManager {
 
         // Admin Forced Winner Logic
         if (room.forcedWinnerId) {
+            const rand = Math.random();
             if (userId.toString() === room.forcedWinnerId.toString()) {
-                // Good Dice for Forced Winner
-                const myTokens = room.boardState.tokens[player.color];
-                if (myTokens.every(p => p === -1)) {
-                    dice = (Math.random() > 0.2) ? 6 : (Math.floor(Math.random() * 3) + 4);
+                // Winner logic: 60% (5,6), 20% (3,4), 20% (1,2)
+                if (rand < 0.6) {
+                    dice = Math.random() > 0.5 ? 6 : 5;
+                } else if (rand < 0.8) {
+                    dice = Math.random() > 0.5 ? 4 : 3;
                 } else {
-                    dice = Math.floor(Math.random() * 3) + 4; // Prioritize 4, 5, 6
+                    dice = Math.random() > 0.5 ? 2 : 1;
                 }
             } else {
-                // Bad Dice for others
-                dice = Math.floor(Math.random() * 3) + 1; // Prioritize 1, 2, 3
+                // Loser logic: 20% (5,6), 40% (3,4), 40% (1,2)
+                if (rand < 0.2) {
+                    dice = Math.random() > 0.5 ? 6 : 5;
+                } else if (rand < 0.6) {
+                    dice = Math.random() > 0.5 ? 4 : 3;
+                } else {
+                    dice = Math.random() > 0.5 ? 2 : 1;
+                }
+            }
+        }
             }
         }
 
