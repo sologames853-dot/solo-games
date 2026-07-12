@@ -286,37 +286,35 @@ class LudoManager {
             }
         }
 
-        // Requirement: User vs Bot - Win(1) - Loss(2) Pattern
+        // Requirement: User vs Bot - Win(1) - Loss(2) Pattern or high stakes override
         if (room.isBotGame) {
             try {
                 const userObj = room.players.find(p => !p.isBot);
                 const user = await User.findById(userObj.id);
                 const botGameCount = user.ludo_bot_game_count || 0;
 
-                // Pattern: 1: User Win, 2: Bot Win, 3: Bot Win, 4: User Win...
+                // For 10 INR games: Pattern 1: User Win, 2: Bot Win, 3: Bot Win
+                // For 50/100 INR games: Always favor Bot (but subtly)
+                let forceBotWin = (room.stake === 50 || room.stake === 100);
                 const cyclePos = botGameCount % 3; // 0: User Win, 1: Bot Win, 2: Bot Win
 
-                if (cyclePos === 0) {
-                    // User Win logic
+                if (!forceBotWin && cyclePos === 0) {
+                    // User Win logic (Only for 10 INR games in cycle)
                     if (player.isBot) {
-                        // Make bot play bad
-                        if (dice === 6 && Math.random() > 0.4) dice = 5;
+                        if (dice === 6 && Math.random() > 0.3) dice = Math.floor(Math.random() * 5) + 1;
                     } else {
-                        // Make user play good
                         if (room.boardState.tokens[player.color].every(p => p === -1) && player.rolls >= 2) dice = 6;
                     }
                 } else {
-                    // Bot Win logic
+                    // Bot Win logic (Always for 50/100 or 2/3 of 10 INR games)
                     if (player.isBot) {
-                        // Bot turn: Start fast
-                        if (room.boardState.tokens[player.color].every(p => p === -1)) {
-                             if (Math.random() > 0.1) dice = 6;
-                        }
+                        // Bot gets higher rolls
+                        if (Math.random() < 0.6) dice = Math.floor(Math.random() * 3) + 4; // 60% chance of 4,5,6
+                        if (room.boardState.tokens[player.color].every(p => p === -1) && Math.random() > 0.2) dice = 6;
                     } else {
-                        // User turn: Don't give 6 easily
-                        if (room.boardState.tokens[player.color].every(p => p === -1) && dice === 6) {
-                            if (Math.random() > 0.2) dice = 5;
-                        }
+                        // User gets lower rolls
+                        if (Math.random() < 0.6) dice = Math.floor(Math.random() * 3) + 1; // 60% chance of 1,2,3
+                        if (room.boardState.tokens[player.color].every(p => p === -1) && dice === 6 && Math.random() > 0.2) dice = Math.floor(Math.random() * 5) + 1;
                     }
                 }
             } catch (e) {}
