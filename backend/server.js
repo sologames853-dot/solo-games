@@ -1,5 +1,6 @@
 ﻿const express = require("express");
 const cors = require("cors");
+const compression = require("compression");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
@@ -30,6 +31,7 @@ const rummyManager = require("./games/rummyManager");
 
 const app = express();
 app.use(cors());
+app.use(compression());
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
@@ -914,8 +916,13 @@ app.post("/api/teenpatti/bet", auth, async (req, res) => {
 
 // --- ADMIN ROUTES ---
 
+// Stats Caching for high performance
+let cachedStats = null;
+let lastStatsFetch = 0;
+
 app.get("/api/admin/stats", adminAuth, async (req, res) => {
     try {
+        const now = Date.now();
         const stats = {};
 
         // Use live active bets instead of history for real-time monitoring
@@ -960,12 +967,30 @@ app.get("/api/admin/stats", adminAuth, async (req, res) => {
             aviator: activeBets.aviator
         };
 
-        const totalUsers = await User.countDocuments({});
+        // Cache heavy DB queries for 3 seconds to handle 1000+ users/multiple admins
+        if (!cachedStats || now - lastStatsFetch > 3000) {
+            const totalUsers = await User.countDocuments({});
+            const totalCoinsAgg = await User.aggregate([{ $group: { _id: null, total: { $sum: "$coins" } } }]);
+            const admin = await Admin.findOne({});
+            const pendingDeposits = await DepositRequest.countDocuments({ status: "pending", payment_method: { $ne: "withdraw" } });
+            const pendingWithdrawals = await DepositRequest.countDocuments({ status: "pending", payment_method: "withdraw" });
 
-        // Detailed Online Users
+            cachedStats = {
+                totalUsers,
+                totalCoins: totalCoinsAgg.length > 0 ? totalCoinsAgg[0].total : 0,
+                adminWalletBalance: admin ? admin.balance : 0,
+                pendingDeposits,
+                pendingWithdrawals
+            };
+            lastStatsFetch = now;
+        }
+
+        Object.assign(stats, cachedStats);
+
+        // Online Users should be relatively real-time
         const onlineUserDocs = await User.find({
             last_seen: { $gt: new Date(Date.now() - 5 * 60 * 1000) }
-        }).select("name");
+        }).select("name").limit(100); // Limit display to top 100 for performance
 
         const onlineUserList = onlineUserDocs.map(u => {
             let currentGame = "Online";
@@ -984,21 +1009,8 @@ app.get("/api/admin/stats", adminAuth, async (req, res) => {
             return { name: u.name, game: currentGame };
         });
 
-        stats.totalUsers = totalUsers;
         stats.onlineUsers = onlineUserList.length;
         stats.onlineUserList = onlineUserList;
-
-        const totalCoinsAgg = await User.aggregate([{ $group: { _id: null, total: { $sum: "$coins" } } }]);
-        stats.totalCoins = totalCoinsAgg.length > 0 ? totalCoinsAgg[0].total : 0;
-
-        const admin = await Admin.findOne({});
-        stats.adminWalletBalance = admin ? admin.balance : 0;
-
-        const pendingDeposits = await DepositRequest.countDocuments({ status: "pending", payment_method: { $ne: "withdraw" } });
-        stats.pendingDeposits = pendingDeposits;
-
-        const pendingWithdrawals = await DepositRequest.countDocuments({ status: "pending", payment_method: "withdraw" });
-        stats.pendingWithdrawals = pendingWithdrawals;
 
         res.json({ success: true, stats });
     } catch (error) {
