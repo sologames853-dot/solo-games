@@ -273,8 +273,6 @@ class LudoManager {
                 }
             }
         }
-            }
-        }
 
         // Requirement: User vs User - Pawn opens in 2 to 5 moves
         if (!room.isBotGame && !room.forcedWinnerId) {
