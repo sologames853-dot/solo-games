@@ -94,8 +94,9 @@ class ColorGameManager {
 
             if (isWin) {
                 const winAmount = Number((bet.amount * multiplier).toFixed(2));
+                const profit = Number((winAmount - bet.amount).toFixed(2));
                 totalPayout += winAmount;
-                await User.findByIdAndUpdate(bet.userId, { $inc: { coins: winAmount, winning_coins: winAmount }, referral_played: true });
+                await User.findByIdAndUpdate(bet.userId, { $inc: { coins: winAmount, winning_coins: profit }, referral_played: true });
                 await checkReferralReward(bet.userId);
                 await new Transaction({
                     user_id: bet.userId,

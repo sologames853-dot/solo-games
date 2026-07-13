@@ -73,8 +73,9 @@ class LuckyDrawManager {
 
             if (winAmount > 0) {
                 winAmount = Number(winAmount.toFixed(2));
+                const profit = Number((winAmount - bet.amount).toFixed(2));
                 totalPayout += winAmount;
-                await User.findByIdAndUpdate(bet.userId, { $inc: { coins: winAmount, winning_coins: winAmount }, referral_played: true });
+                await User.findByIdAndUpdate(bet.userId, { $inc: { coins: winAmount, winning_coins: profit }, referral_played: true });
                 await checkReferralReward(bet.userId);
                 await new Transaction({
                     user_id: bet.userId,

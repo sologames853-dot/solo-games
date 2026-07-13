@@ -75,7 +75,8 @@ class RummyManager {
             table.players[userId].status = isWinner ? 'winner' : 'lost';
 
             if (isWinner) {
-                await User.findByIdAndUpdate(userId, { $inc: { coins: winAmount, winning_coins: winAmount } });
+                const profit = Number((winAmount - table.players[userId].betAmount).toFixed(2));
+                await User.findByIdAndUpdate(userId, { $inc: { coins: winAmount, winning_coins: profit } });
                 const txn = new Transaction({
                     user_id: userId,
                     amount: winAmount - table.players[userId].betAmount,

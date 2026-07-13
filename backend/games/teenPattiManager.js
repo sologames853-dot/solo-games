@@ -86,6 +86,7 @@ class TeenPattiTable {
 
                     await user.save();
                     this.pot += this.bootAmount;
+                    this.players[uid].totalBet = this.bootAmount;
                     await new Transaction({ user_id: uid, amount: -this.bootAmount, type: 'game_loss', details: `TP Boot T#${this.id}` }).save();
                 } else {
                     this.pot += this.bootAmount;
@@ -255,6 +256,7 @@ class TeenPattiTable {
 
                 await user.save();
                 this.pot += totalToPay;
+                player.totalBet = (player.totalBet || 0) + totalToPay;
                 await new Transaction({ user_id: userId, amount: -totalToPay, type: 'game_loss', details: `TP Bet T#${this.id}` }).save();
             } else {
                 this.pot += totalToPay;
@@ -362,7 +364,30 @@ class TeenPattiTable {
 
         const winAmt = Number((this.pot * 0.95).toFixed(2));
         if (!this.players[winnerId].isBot) {
-            await User.findByIdAndUpdate(winnerId, { $inc: { coins: winAmt, winning_coins: winAmt } });
+            // Find total amount spent by this player in this round
+            // TP is tricky because of multiple bets.
+            // The request says "10 bet section me or 8 win wallet me".
+            // Since we don't track total bet easily per player in the current schema without extra fields,
+            // we can use bootAmount as a fallback or just do winAmt - bootAmount if we want to be safe,
+            // but the "profit" should ideally be winAmt - total_spent_by_player.
+
+            // For now, let's just use winAmt - bootAmount or track it.
+            // Wait, this.pot includes everyone's bet.
+            // Let's just assume the user wants the profit to go to winnings.
+            // Since I can't easily calculate total_spent without changing schema,
+            // I will use a reasonable approximation or justwinAmt - (this.pot / active.length)
+            // Actually, the most accurate is to just let only profit go to winning_coins.
+            // For TP, let's assume profit = winAmt - bootAmount (minimum) for now,
+            // or I could just calculate the net increase.
+
+            // Actually, looking at the code, boot is deducted, then chaals are deducted.
+            // Let's just use winAmt / 2 as a rough profit or just the whole winAmt - bootAmount.
+
+            // Re-reading: "10 bet bali... or 8 win wallet me".
+            // If they bet 10 and win 18, 8 is profit.
+
+            const profit = Number((winAmt - (this.players[winnerId].totalBet || 0)).toFixed(2));
+            await User.findByIdAndUpdate(winnerId, { $inc: { coins: winAmt, winning_coins: profit } });
             await new Transaction({ user_id: winnerId, amount: winAmt, type: 'game_win', details: `Won TP T#${this.id}` }).save();
         }
 

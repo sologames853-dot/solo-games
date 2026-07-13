@@ -855,10 +855,11 @@ app.post("/api/game/aviator/cashout", auth, async (req, res) => {
 
         const bet = activeBets.aviator[betIndex];
         const winAmount = Number((bet.betAmount * multiplier).toFixed(2));
+        const profit = Number((winAmount - bet.betAmount).toFixed(2));
 
         const user = await User.findById(userId);
         user.coins += winAmount;
-        user.winning_coins += winAmount;
+        user.winning_coins += profit;
         await user.save();
 
         await new Transaction({
