@@ -350,6 +350,8 @@
                         <button class="action-btn btn-block" style="flex:1" onclick="toggleAutoOpen(false)">AUTO OFF</button>
                     </div>
                     <div id="live-bets-color" class="live-bet-table"></div>
+                    <label style="font-size: 11px; color: var(--text-dim); margin-top: 15px; display: block;">HISTORY</label>
+                    <div id="color-history" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 10px;"></div>
                 </div>
 
                 <!-- Big Small Control -->
@@ -362,6 +364,8 @@
                         <button class="action-btn btn-unblock" onclick="forceGame('bigsmall', 'BIG')">BIG</button>
                     </div>
                     <div id="live-bets-bigsmall" class="live-bet-table"></div>
+                    <label style="font-size: 11px; color: var(--text-dim); margin-top: 15px; display: block;">HISTORY</label>
+                    <div id="bigsmall-history" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 10px;"></div>
                 </div>
 
                 <!-- Lucky Draw -->
@@ -385,6 +389,8 @@
                         <button class="action-btn btn-edit" onclick="forceGame('luckydraw', document.getElementById('forceLuckyRes').value)">SET</button>
                     </div>
                     <div id="live-bets-lucky" class="live-bet-table"></div>
+                    <label style="font-size: 11px; color: var(--text-dim); margin-top: 15px; display: block;">HISTORY</label>
+                    <div id="lucky-history" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 10px;"></div>
                 </div>
                 <div class="control-card" style="grid-column: span 2;">
                     <h4><i class="fas fa-spade"></i> Advanced Teen Patti Control</h4>
@@ -419,6 +425,8 @@
                         <button class="action-btn btn-block" style="flex:1" onclick="forceGame('numberspin', null, null, null, false)">AUTO OFF</button>
                     </div>
                     <div id="live-bets-numberspin" class="live-bet-table"></div>
+                    <label style="font-size: 11px; color: var(--text-dim); margin-top: 15px; display: block;">HISTORY</label>
+                    <div id="numberspin-history" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 10px;"></div>
                 </div>
 
                 <!-- Ludo Control -->
@@ -626,11 +634,50 @@
                         const ct = s.colorState.timer;
                         document.getElementById('color-timer').innerText = ct > 5 ? `Betting: ${ct - 5}s` : `ADMIN WINDOW: ${ct}s`;
                         document.getElementById('color-timer').style.color = ct > 5 ? "#10b981" : "#ef4444";
+
+                        const histEl = document.getElementById('color-history');
+                        if (s.colorState.history) {
+                            histEl.innerHTML = s.colorState.history.slice(0, 10).map(h => `
+                                <div style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px; color: ${h.color === 'RED' ? '#ef4444' : (h.color === 'BLUE' ? '#3b82f6' : (h.color === 'GREEN' ? '#22c55e' : (h.color === 'YELLOW' ? '#f59e0b' : '#8b5cf6')))}">
+                                    ${h.number}
+                                </div>
+                            `).join('');
+                        }
                     }
-                    if (s.luckyState) document.getElementById('lucky-timer').innerText = `Lucky Draw: ${s.luckyState.timer}s`;
+                    if (s.luckyState) {
+                        document.getElementById('lucky-timer').innerText = `Lucky Draw: ${s.luckyState.timer}s`;
+                        const histEl = document.getElementById('lucky-history');
+                        if (s.luckyState.history) {
+                            histEl.innerHTML = s.luckyState.history.slice(0, 10).map(h => `
+                                <div style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px;">
+                                    ${h.result}
+                                </div>
+                            `).join('');
+                        }
+                    }
                     if (s.spinState) document.getElementById('spin-timer').innerText = `Spinning in: ${s.spinState.timer}s`;
-                    if (s.bigSmallState) document.getElementById('bigsmall-timer').innerText = `Dice Roll: ${s.bigSmallState.timer}s`;
-                    if (s.numberspinState) document.getElementById('numberspin-timer').innerText = `Spinning in: ${s.numberspinState.timer}s`;
+                    if (s.bigSmallState) {
+                        document.getElementById('bigsmall-timer').innerText = `Dice Roll: ${s.bigSmallState.timer}s`;
+                        const histEl = document.getElementById('bigsmall-history');
+                        if (s.bigSmallState.history) {
+                            histEl.innerHTML = s.bigSmallState.history.slice(0, 10).map(h => `
+                                <div style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px; color: ${h.result === 'BIG' ? '#3b82f6' : (h.result === 'SMALL' ? '#ef4444' : '#f59e0b')}">
+                                    ${h.result[0]}
+                                </div>
+                            `).join('');
+                        }
+                    }
+                    if (s.numberspinState) {
+                        document.getElementById('numberspin-timer').innerText = `Spinning in: ${s.numberspinState.timer}s`;
+                        const histEl = document.getElementById('numberspin-history');
+                        if (s.numberspinState.history) {
+                            histEl.innerHTML = s.numberspinState.history.slice(0, 10).map(h => `
+                                <div style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px;">
+                                    ${h.result}
+                                </div>
+                            `).join('');
+                        }
+                    }
 
                     renderLiveBets('color', s.liveBets.color);
                     renderLiveBets('lucky', s.liveBets.luckydraw);
