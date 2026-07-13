@@ -810,6 +810,9 @@ app.post("/api/play/aviator", auth, async (req, res) => {
 
 app.post("/api/game/aviator/cancel", auth, async (req, res) => {
     try {
+        if (aviatorState.isFlying) {
+            return res.json({ success: false, message: "Round in progress, cannot cancel" });
+        }
         const { slot } = req.body;
         const userId = req.user.id;
         const index = activeBets.aviator.findIndex(b =>
@@ -832,6 +835,10 @@ app.post("/api/game/aviator/cancel", auth, async (req, res) => {
 
 app.post("/api/game/aviator/cashout", auth, async (req, res) => {
     try {
+        if (aviatorState.isCrashed || !aviatorState.isFlying) {
+            return res.json({ success: false, message: "Round already ended" });
+        }
+
         if (aviatorState.cashoutBlocked) {
             return res.json({ success: false, message: "Cashout currently unavailable" });
         }
