@@ -31,8 +31,6 @@ const UserSchema = new mongoose.Schema({
     created_at: { type: Date, default: Date.now }
 });
 
-UserSchema.index({ email: 1 });
-UserSchema.index({ referral_code: 1 });
 UserSchema.index({ last_seen: -1 });
 
 module.exports = mongoose.model("User", UserSchema);
