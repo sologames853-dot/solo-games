@@ -74,11 +74,11 @@ class NumberSpinManager {
             else if (bet.selection === 'UP' && winningNumber >= 8 && winningNumber <= 12) multiplier = 2;
             else if (parseInt(bet.selection) === winningNumber) multiplier = 10; // Individual number payout 1:9
 
-            const winAmount = Math.floor(bet.amount * multiplier);
+            const winAmount = Number((bet.amount * multiplier).toFixed(2));
 
             if (winAmount > 0) {
                 totalPayout += winAmount;
-                await User.findByIdAndUpdate(bet.userId, { $inc: { coins: winAmount }, referral_played: true });
+                await User.findByIdAndUpdate(bet.userId, { $inc: { coins: winAmount, winning_coins: winAmount }, referral_played: true });
                 await checkReferralReward(bet.userId);
                 await new Transaction({
                     user_id: bet.userId,
@@ -141,9 +141,9 @@ class NumberSpinManager {
         return candidates[Math.floor(Math.random() * candidates.length)];
     }
 
-    placeBet(userId, name, selection, amount) {
+    placeBet(userId, name, selection, amount, fromWinnings) {
         if (this.timer < 1 || this.isSpinning) return { success: false, message: "Bets locked" };
-        this.bets.push({ userId, name, selection, amount: Number(amount) });
+        this.bets.push({ userId, name, selection, amount: Number(amount), fromWinnings });
         return { success: true };
     }
 

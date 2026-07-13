@@ -602,7 +602,7 @@ class LudoManager {
 
         if (winner && !winner.isBot) {
             try {
-                await User.findByIdAndUpdate(winnerId, { $inc: { coins: prize } });
+                await User.findByIdAndUpdate(winnerId, { $inc: { coins: prize, winning_coins: prize } });
                 await new Transaction({
                     user_id: winnerId, amount: prize, type: 'game_win',
                     game_name: 'Ludo', details: `Won Ludo match (Stake: ${stake}) ${reason}`

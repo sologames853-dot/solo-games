@@ -423,7 +423,10 @@
             <span id="headerUserName" style="font-size: 12px; font-weight: 800; color: #fff; margin-right: -5px;">...</span>
             <div class="header-wallet" onclick="location.href='wallet.html'">
                 <i class="fas fa-coins"></i>
-                <span id="headerCoins">0.00</span>
+                <div style="display: flex; flex-direction: column; line-height: 1;">
+                    <span id="headerCoins">0.00</span>
+                    <span id="headerWinningCoins" style="font-size: 8px; color: #4ade80; margin-top: 2px;">Win: 0.00</span>
+                </div>
             </div>
             <i class="fas fa-headset header-icon" onclick="openHelpDesk()"></i>
         </div>
@@ -684,6 +687,7 @@
                 document.getElementById("headerUserName").innerText = data.user.name;
                 const coinsFormatted = data.user.coins.toLocaleString(undefined, {minimumFractionDigits: 2});
                 document.getElementById("headerCoins").innerText = coinsFormatted;
+                document.getElementById("headerWinningCoins").innerText = "Win: " + (data.user.winning_coins || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
                 document.getElementById("referralCode").innerText = data.user.referral_code || "N/A";
 
                 // Save to local cache for subsequent lightning fast loads

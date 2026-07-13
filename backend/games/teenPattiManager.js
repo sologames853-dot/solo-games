@@ -76,7 +76,14 @@ class TeenPattiTable {
                         delete this.players[uid];
                         continue;
                     }
+
+                    // Deduct boot from non-winning coins first
+                    let nonWinning = user.coins - user.winning_coins;
+                    if (this.bootAmount > nonWinning) {
+                        user.winning_coins = Math.max(0, user.winning_coins - (this.bootAmount - nonWinning));
+                    }
                     user.coins -= this.bootAmount;
+
                     await user.save();
                     this.pot += this.bootAmount;
                     await new Transaction({ user_id: uid, amount: -this.bootAmount, type: 'game_loss', details: `TP Boot T#${this.id}` }).save();
@@ -238,7 +245,14 @@ class TeenPattiTable {
             if (!player.isBot) {
                 const user = await User.findById(userId);
                 if (!user || user.coins < totalToPay) return { success: false, message: "Insufficient coins" };
+
+                // Deduct from non-winning coins first
+                let nonWinning = user.coins - user.winning_coins;
+                if (totalToPay > nonWinning) {
+                    user.winning_coins = Math.max(0, user.winning_coins - (totalToPay - nonWinning));
+                }
                 user.coins -= totalToPay;
+
                 await user.save();
                 this.pot += totalToPay;
                 await new Transaction({ user_id: userId, amount: -totalToPay, type: 'game_loss', details: `TP Bet T#${this.id}` }).save();
@@ -346,9 +360,9 @@ class TeenPattiTable {
             if (s > maxS) { maxS = s; winnerId = uid; }
         });
 
-        const winAmt = Math.floor(this.pot * 0.95);
+        const winAmt = Number((this.pot * 0.95).toFixed(2));
         if (!this.players[winnerId].isBot) {
-            await User.findByIdAndUpdate(winnerId, { $inc: { coins: winAmt } });
+            await User.findByIdAndUpdate(winnerId, { $inc: { coins: winAmt, winning_coins: winAmt } });
             await new Transaction({ user_id: winnerId, amount: winAmt, type: 'game_win', details: `Won TP T#${this.id}` }).save();
         }
 

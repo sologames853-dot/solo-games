@@ -49,11 +49,11 @@ class SpinGameManager {
 
         for (let bet of this.bets) {
             totalBetAmount += bet.amount;
-            const winAmount = Math.floor(bet.amount * multiplier);
+            const winAmount = Number((bet.amount * multiplier).toFixed(2));
 
             if (winAmount > 0) {
                 totalPayout += winAmount;
-                await User.findByIdAndUpdate(bet.userId, { $inc: { coins: winAmount }, referral_played: true });
+                await User.findByIdAndUpdate(bet.userId, { $inc: { coins: winAmount, winning_coins: winAmount }, referral_played: true });
                 await checkReferralReward(bet.userId);
                 await new Transaction({
                     user_id: bet.userId,
@@ -88,9 +88,9 @@ class SpinGameManager {
         this.isResolving = false;
     }
 
-    placeBet(userId, name, amount) {
+    placeBet(userId, name, amount, fromWinnings) {
         if (this.timer < 3) return { success: false, message: "Spinning soon" };
-        this.bets.push({ userId, name, amount: Number(amount) });
+        this.bets.push({ userId, name, amount: Number(amount), fromWinnings });
         return { success: true };
     }
 

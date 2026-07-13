@@ -74,7 +74,7 @@ class LuckyDrawManager {
             if (winAmount > 0) {
                 winAmount = Number(winAmount.toFixed(2));
                 totalPayout += winAmount;
-                await User.findByIdAndUpdate(bet.userId, { $inc: { coins: winAmount }, referral_played: true });
+                await User.findByIdAndUpdate(bet.userId, { $inc: { coins: winAmount, winning_coins: winAmount }, referral_played: true });
                 await checkReferralReward(bet.userId);
                 await new Transaction({
                     user_id: bet.userId,
@@ -142,11 +142,11 @@ class LuckyDrawManager {
         return bestResult;
     }
 
-    placeBet(userId, name, amount, selection) {
+    placeBet(userId, name, amount, selection, fromWinnings) {
         if (this.timer < 3 || this.isResolving) return { success: false, message: "Round starting" };
         const betAmount = Number(amount);
         if (betAmount < 10) return { success: false, message: "Min bet is 10" };
-        this.bets.push({ userId, name, amount: betAmount, selection: selection || 'ODD' });
+        this.bets.push({ userId, name, amount: betAmount, selection: selection || 'ODD', fromWinnings });
         return { success: true };
     }
 
@@ -158,7 +158,7 @@ class LuckyDrawManager {
         const actualIndex = this.bets.length - 1 - lastIndex;
         const bet = this.bets[actualIndex];
         this.bets.splice(actualIndex, 1);
-        return { success: true, amount: bet.amount };
+        return { success: true, amount: bet.amount, fromWinnings: bet.fromWinnings };
     }
 
     getGameState() {

@@ -5,6 +5,7 @@ const UserSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     coins: { type: Number, default: 0 },
+    winning_coins: { type: Number, default: 0 }, // Withdrawable balance
     status: { type: String, default: "active" },
     avatar: { type: String, default: null },
     last_bonus: { type: Date, default: null },

@@ -68,14 +68,14 @@ class RummyManager {
         }
 
         const totalPool = Object.values(table.players).reduce((acc, p) => acc + p.betAmount, 0);
-        const winAmount = Math.floor(totalPool * 0.95); // 5% house edge
+        const winAmount = Number((totalPool * 0.95).toFixed(2)); // 5% house edge
 
         for (let userId of userIds) {
             const isWinner = userId === winnerId;
             table.players[userId].status = isWinner ? 'winner' : 'lost';
 
             if (isWinner) {
-                await User.findByIdAndUpdate(userId, { $inc: { coins: winAmount } });
+                await User.findByIdAndUpdate(userId, { $inc: { coins: winAmount, winning_coins: winAmount } });
                 const txn = new Transaction({
                     user_id: userId,
                     amount: winAmount - table.players[userId].betAmount,
@@ -99,13 +99,13 @@ class RummyManager {
         }
     }
 
-    placeBet(tableId, userId, name, amount) {
+    placeBet(tableId, userId, name, amount, fromWinnings) {
         const table = this.tables[tableId];
         if (!table) return { success: false, message: "Table not found" };
         if (table.state !== 'BETTING') return { success: false, message: "Not in betting phase" };
         if (table.players[userId]) return { success: false, message: "Already in table" };
 
-        table.players[userId] = { name, betAmount: Number(amount), status: 'active' };
+        table.players[userId] = { name, betAmount: Number(amount), status: 'active', fromWinnings };
         return { success: true };
     }
 

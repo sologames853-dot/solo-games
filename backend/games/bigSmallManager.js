@@ -75,7 +75,7 @@ class BigSmallManager {
                 const multiplier = result === 'TRIPLE' ? 24 : 1.95;
                 const winAmount = Number((bet.amount * multiplier).toFixed(2));
                 totalPayout += winAmount;
-                await User.findByIdAndUpdate(bet.userId, { $inc: { coins: winAmount }, referral_played: true });
+                await User.findByIdAndUpdate(bet.userId, { $inc: { coins: winAmount, winning_coins: winAmount }, referral_played: true });
                 await new Transaction({
                     user_id: bet.userId,
                     amount: winAmount,
@@ -110,12 +110,12 @@ class BigSmallManager {
         }, 5000);
     }
 
-    placeBet(userId, name, prediction, amount) {
+    placeBet(userId, name, prediction, amount, fromWinnings) {
         if (this.timer < 3) return { success: false, message: "Round starting" };
         const betAmount = Number(amount);
         if (betAmount < 1) return { success: false, message: "Minimum bet is 1" };
         if (betAmount > 5000) return { success: false, message: "Maximum bet is 5000" };
-        this.bets.push({ userId, name, prediction: prediction.toUpperCase(), amount: betAmount });
+        this.bets.push({ userId, name, prediction: prediction.toUpperCase(), amount: betAmount, fromWinnings });
         return { success: true };
     }
 
@@ -127,7 +127,7 @@ class BigSmallManager {
         const actualIndex = this.bets.length - 1 - lastIndex;
         const bet = this.bets[actualIndex];
         this.bets.splice(actualIndex, 1);
-        return { success: true, amount: bet.amount };
+        return { success: true, amount: bet.amount, fromWinnings: bet.fromWinnings };
     }
 
     getGameState() {

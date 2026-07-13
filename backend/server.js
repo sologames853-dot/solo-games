@@ -49,6 +49,20 @@ if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir);
 }
 
+const deductUserCoins = (user, amount) => {
+    let nonWinning = user.coins - user.winning_coins;
+    let fromWinnings = 0;
+    if (amount > nonWinning) {
+        fromWinnings = amount - nonWinning;
+        user.winning_coins = Math.max(0, user.winning_coins - fromWinnings);
+    }
+    user.coins = Math.max(0, user.coins - amount);
+    // Round to 2 decimal places to avoid floating point issues
+    user.coins = Number(user.coins.toFixed(2));
+    user.winning_coins = Number(user.winning_coins.toFixed(2));
+    return Number(fromWinnings.toFixed(2));
+};
+
 const SECRET = process.env.JWT_SECRET;
 const DEFAULT_UPI = process.env.DEFAULT_UPI;
 
@@ -200,7 +214,7 @@ app.post("/api/admin/login", async (req, res) => {
 
 app.get("/api/profile", auth, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select("name email coins avatar referral_code kyc_status kyc_rejection_reason kyc_rejected_at");
+        const user = await User.findById(req.user.id).select("name email coins winning_coins avatar referral_code kyc_status kyc_rejection_reason kyc_rejected_at");
         if (!user) {
             return res.json({ success: false, message: "User Not Found" });
         }
@@ -353,8 +367,8 @@ app.post("/api/wallet/request-withdrawal", auth, async (req, res) => {
             return res.json({ success: false, message: "Minimum withdrawal is 200" });
         }
 
-        if (user.coins < parsedAmount) {
-            return res.json({ success: false, message: "Insufficient coins" });
+        if (user.winning_coins < parsedAmount) {
+            return res.json({ success: false, message: `Insufficient winning coins. Your withdrawable balance is ₹${user.winning_coins.toFixed(2)}` });
         }
 
         const commissionRate = 0.05; // 5% Admin Commission
@@ -363,6 +377,7 @@ app.post("/api/wallet/request-withdrawal", auth, async (req, res) => {
 
         // Deduct coins immediately and create pending transaction
         user.coins -= parsedAmount;
+        user.winning_coins -= parsedAmount;
         await user.save();
 
         const bankDetails = `Bank: ${user.kyc_data.account_no} | IFSC: ${user.kyc_data.ifsc_code} | Name: ${user.kyc_data.full_name}`;
@@ -417,9 +432,9 @@ app.post("/api/game/bigsmall/bet", auth, async (req, res) => {
     const user = await User.findById(req.user.id);
     if (user.coins < amount) return res.json({ success: false, message: "Insufficient coins" });
 
-    const betRes = bigSmallManager.placeBet(req.user.id, user.name, prediction, amount);
+    const fromWinnings = deductUserCoins(user, amount);
+    const betRes = bigSmallManager.placeBet(req.user.id, user.name, prediction, amount, fromWinnings);
     if (betRes.success) {
-        user.coins -= amount;
         await user.save();
     }
     res.json(betRes);
@@ -430,6 +445,7 @@ app.post("/api/game/bigsmall/cancel", auth, async (req, res) => {
     const result = bigSmallManager.cancelLastBet(req.user.id);
     if (result.success) {
         user.coins += result.amount;
+        user.winning_coins += (result.fromWinnings || 0);
         await user.save();
     }
     res.json(result);
@@ -444,9 +460,9 @@ app.post("/api/game/color/bet", auth, async (req, res) => {
     const user = await User.findById(req.user.id);
     if (user.coins < amount) return res.json({ success: false, message: "Insufficient coins" });
 
-    const betRes = colorGameManager.placeBet(req.user.id, user.name, type, value, amount);
+    const fromWinnings = deductUserCoins(user, amount);
+    const betRes = colorGameManager.placeBet(req.user.id, user.name, type, value, amount, fromWinnings);
     if (betRes.success) {
-        user.coins -= amount;
         await user.save();
     }
     res.json(betRes);
@@ -457,6 +473,7 @@ app.post("/api/game/color/cancel", auth, async (req, res) => {
     const result = colorGameManager.cancelLastBet(req.user.id);
     if (result.success) {
         user.coins += result.amount;
+        user.winning_coins += (result.fromWinnings || 0);
         await user.save();
     }
     res.json(result);
@@ -471,9 +488,9 @@ app.post("/api/game/luckydraw/bet", auth, async (req, res) => {
     const user = await User.findById(req.user.id);
     if (user.coins < amount) return res.json({ success: false, message: "Insufficient coins" });
 
-    const betRes = luckyDrawManager.placeBet(req.user.id, user.name, amount, selection);
+    const fromWinnings = deductUserCoins(user, amount);
+    const betRes = luckyDrawManager.placeBet(req.user.id, user.name, amount, selection, fromWinnings);
     if (betRes.success) {
-        user.coins -= amount;
         await user.save();
     }
     res.json(betRes);
@@ -484,6 +501,7 @@ app.post("/api/game/luckydraw/cancel", auth, async (req, res) => {
     const result = luckyDrawManager.cancelLastBet(req.user.id);
     if (result.success) {
         user.coins += result.amount;
+        user.winning_coins += (result.fromWinnings || 0);
         await user.save();
     }
     res.json(result);
@@ -498,9 +516,9 @@ app.post("/api/game/spin/bet", auth, async (req, res) => {
     const user = await User.findById(req.user.id);
     if (user.coins < amount) return res.json({ success: false, message: "Insufficient coins" });
 
-    const betRes = spinGameManager.placeBet(req.user.id, user.name, amount);
+    const fromWinnings = deductUserCoins(user, amount);
+    const betRes = spinGameManager.placeBet(req.user.id, user.name, amount, fromWinnings);
     if (betRes.success) {
-        user.coins -= amount;
         await user.save();
     }
     res.json(betRes);
@@ -516,9 +534,9 @@ app.post("/api/game/numberspin/bet", auth, async (req, res) => {
     const user = await User.findById(req.user.id);
     if (user.coins < amount) return res.json({ success: false, message: "Insufficient coins" });
 
-    const betRes = numberSpinManager.placeBet(req.user.id, user.name, selection, amount);
+    const fromWinnings = deductUserCoins(user, amount);
+    const betRes = numberSpinManager.placeBet(req.user.id, user.name, selection, amount, fromWinnings);
     if (betRes.success) {
-        user.coins -= amount;
         await user.save();
     }
     res.json(betRes);
@@ -540,9 +558,9 @@ app.post("/api/game/rummy/join", auth, async (req, res) => {
     const user = await User.findById(req.user.id);
     if (user.coins < betAmount) return res.json({ success: false, message: "Insufficient coins" });
 
-    const betRes = rummyManager.placeBet(tableId, req.user.id, user.name, betAmount);
+    const fromWinnings = deductUserCoins(user, betAmount);
+    const betRes = rummyManager.placeBet(tableId, req.user.id, user.name, betAmount, fromWinnings);
     if (betRes.success) {
-        user.coins -= betAmount;
         user.referral_played = true; // Mark that user has played at least once
         await user.save();
     }
@@ -769,7 +787,7 @@ app.post("/api/play/aviator", auth, async (req, res) => {
         const user = await User.findById(userId);
         if (user.coins < betAmount) return res.json({ success: false, message: "Insufficient coins" });
 
-        user.coins -= betAmount;
+        const fromWinnings = deductUserCoins(user, betAmount);
         user.referral_played = true; // Mark that user has played at least once
         await user.save();
 
@@ -777,6 +795,7 @@ app.post("/api/play/aviator", auth, async (req, res) => {
             userId,
             name: user.name,
             betAmount: Number(betAmount),
+            fromWinnings, // Track this for cancel
             cashOutMultiplier: Number(cashOutMultiplier),
             cashedOut: false,
             multiplier: 0,
@@ -800,7 +819,11 @@ app.post("/api/game/aviator/cancel", auth, async (req, res) => {
         if (index === -1) return res.json({ success: false, message: "Bet not found" });
 
         const bet = activeBets.aviator[index];
-        await User.findByIdAndUpdate(userId, { $inc: { coins: bet.betAmount } });
+        const user = await User.findById(userId);
+        user.coins += bet.betAmount;
+        user.winning_coins += (bet.fromWinnings || 0);
+        await user.save();
+
         activeBets.aviator.splice(index, 1);
 
         res.json({ success: true, message: "Bet cancelled and refunded" });
@@ -828,6 +851,7 @@ app.post("/api/game/aviator/cashout", auth, async (req, res) => {
 
         const user = await User.findById(userId);
         user.coins += winAmount;
+        user.winning_coins += winAmount;
         await user.save();
 
         await new Transaction({
