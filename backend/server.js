@@ -37,6 +37,7 @@ app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
 // Nodemailer Config
+console.log("Setting up mailer with user:", process.env.EMAIL_USER ? "CONFIGURED" : "MISSING");
 const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
