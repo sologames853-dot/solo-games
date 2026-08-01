@@ -41,14 +41,15 @@ console.log("Setting up mailer with user:", process.env.EMAIL_USER ? "CONFIGURED
 const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 587,
-    secure: false, // port 587 uses STARTTLS
+    secure: false,
     auth: {
         user: process.env.EMAIL_USER,
         pass: (process.env.EMAIL_PASS || "").replace(/\s/g, "")
     },
     tls: {
-        rejectUnauthorized: false // Helps with some cloud network restrictions
-    }
+        rejectUnauthorized: false
+    },
+    family: 4 // Force IPv4 to avoid ENETUNREACH on IPv6
 });
 
 // Verify Transporter
