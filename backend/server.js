@@ -38,20 +38,18 @@ app.use("/uploads", express.static("uploads"));
 
 // Nodemailer Config
 const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
+    service: "gmail",
     auth: {
         user: process.env.EMAIL_USER,
         pass: (process.env.EMAIL_PASS || "").replace(/\s/g, "")
-    },
-    timeout: 10000 // 10 seconds timeout
+    }
 });
 
 // Verify Transporter
 transporter.verify(function (error, success) {
     if (error) {
         console.error("❌ Nodemailer Verification Error:", error);
+        console.log("Tip: Make sure EMAIL_USER and EMAIL_PASS are set in Render Environment Variables.");
     } else {
         console.log("✅ Mail Server is ready to take our messages");
     }
