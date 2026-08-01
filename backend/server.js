@@ -42,17 +42,23 @@ console.log("Setting up mailer with user:", process.env.EMAIL_USER ? "CONFIGURED
 
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
+    port: 587,
+    secure: false, // port 587 uses STARTTLS
     auth: {
         user: (process.env.EMAIL_USER || "").trim(),
         pass: (process.env.EMAIL_PASS || "").replace(/\s/g, "")
     },
-    // Force IPv4 lookup
+    // Force IPv4 using resolve4
     lookup: (hostname, options, callback) => {
-        dns.lookup(hostname, { family: 4 }, callback);
+        dns.resolve4(hostname, (err, addresses) => {
+            if (err || !addresses.length) {
+                // Fallback to standard lookup if resolve4 fails
+                return dns.lookup(hostname, { family: 4 }, callback);
+            }
+            callback(null, addresses[0], 4);
+        });
     },
-    connectionTimeout: 20000, // Increase to 20s
+    connectionTimeout: 20000,
     greetingTimeout: 20000,
     socketTimeout: 20000
 });
