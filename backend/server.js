@@ -38,10 +38,22 @@ app.use("/uploads", express.static("uploads"));
 
 // Nodemailer Config
 const transporter = nodemailer.createTransport({
-    service: process.env.EMAIL_SERVICE || "gmail",
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
     auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+        pass: (process.env.EMAIL_PASS || "").replace(/\s/g, "")
+    },
+    timeout: 10000 // 10 seconds timeout
+});
+
+// Verify Transporter
+transporter.verify(function (error, success) {
+    if (error) {
+        console.error("❌ Nodemailer Verification Error:", error);
+    } else {
+        console.log("✅ Mail Server is ready to take our messages");
     }
 });
 
@@ -204,13 +216,14 @@ app.post("/api/forgot-password", async (req, res) => {
             `
         };
 
+        console.log(`Attempting to send OTP to ${email}...`);
         await transporter.sendMail(mailOptions);
-        console.log(`Password reset OTP sent to ${email}`);
+        console.log(`✅ Password reset OTP sent successfully to ${email}`);
 
         res.json({ success: true, message: "OTP sent to your email!" });
     } catch (error) {
-        console.error("Forgot Password Error:", error);
-        res.status(500).json({ success: false, message: "Error sending email. Check your SMTP settings." });
+        console.error("❌ Forgot Password Email Error:", error);
+        res.status(500).json({ success: false, message: "Error sending email: " + error.message });
     }
 });
 
