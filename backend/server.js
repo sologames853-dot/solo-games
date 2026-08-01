@@ -38,34 +38,21 @@ app.use("/uploads", express.static("uploads"));
 
 // Nodemailer Config
 const dns = require('dns');
-console.log("Initializing Mailer for:", process.env.EMAIL_USER);
+if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder('ipv4first');
+}
 
+console.log("Initializing Mailer for:", process.env.EMAIL_USER);
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // Port 587 uses STARTTLS
+    port: 465,
+    secure: true,
     auth: {
         user: (process.env.EMAIL_USER || "").trim(),
         pass: (process.env.EMAIL_PASS || "").replace(/\s/g, "")
     },
-    // The Ultimate IPv4 Force: This filters out any IPv6 addresses at the DNS level
-    lookup: (hostname, options, callback) => {
-        dns.lookup(hostname, { all: true }, (err, addresses) => {
-            if (err) return callback(err);
-            // Only take IPv4 addresses
-            const ipv4 = addresses.find(a => a.family === 4);
-            if (ipv4) {
-                callback(null, ipv4.address, 4);
-            } else {
-                callback(new Error('No IPv4 address found for ' + hostname));
-            }
-        });
-    },
-    tls: {
-        rejectUnauthorized: false,
-        minVersion: 'TLSv1.2'
-    },
-    connectionTimeout: 30000, // 30 seconds
+    family: 4,
+    connectionTimeout: 30000,
     greetingTimeout: 30000,
     socketTimeout: 30000
 });
