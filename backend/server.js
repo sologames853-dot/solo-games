@@ -37,30 +37,16 @@ app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
 // Nodemailer Config
-const dns = require('dns');
-console.log("Setting up mailer with user:", process.env.EMAIL_USER ? "CONFIGURED" : "MISSING");
-
+console.log("Initializing Mailer for:", process.env.EMAIL_USER);
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // port 587 uses STARTTLS
+    service: 'gmail',
     auth: {
         user: (process.env.EMAIL_USER || "").trim(),
         pass: (process.env.EMAIL_PASS || "").replace(/\s/g, "")
     },
-    // Force IPv4 using resolve4
-    lookup: (hostname, options, callback) => {
-        dns.resolve4(hostname, (err, addresses) => {
-            if (err || !addresses.length) {
-                // Fallback to standard lookup if resolve4 fails
-                return dns.lookup(hostname, { family: 4 }, callback);
-            }
-            callback(null, addresses[0], 4);
-        });
-    },
-    connectionTimeout: 20000,
-    greetingTimeout: 20000,
-    socketTimeout: 20000
+    logger: true, // Enable logging
+    debug: true,  // Show debug output
+    family: 4     // Force IPv4
 });
 
 // Verify Transporter
