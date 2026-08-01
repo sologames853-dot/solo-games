@@ -37,19 +37,24 @@ app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
 // Nodemailer Config
+const dns = require('dns');
 console.log("Setting up mailer with user:", process.env.EMAIL_USER ? "CONFIGURED" : "MISSING");
+
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 465,
     secure: true,
     auth: {
-        user: process.env.EMAIL_USER,
+        user: (process.env.EMAIL_USER || "").trim(),
         pass: (process.env.EMAIL_PASS || "").replace(/\s/g, "")
     },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-    family: 4 // Force IPv4 to avoid Render's ENETUNREACH on IPv6
+    // Force IPv4 lookup
+    lookup: (hostname, options, callback) => {
+        dns.lookup(hostname, { family: 4 }, callback);
+    },
+    connectionTimeout: 20000, // Increase to 20s
+    greetingTimeout: 20000,
+    socketTimeout: 20000
 });
 
 // Verify Transporter
