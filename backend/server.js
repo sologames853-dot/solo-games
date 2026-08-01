@@ -37,16 +37,24 @@ app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
 // Nodemailer Config
+const net = require('net');
+if (net.setDefaultAutoSelectFamily) {
+    net.setDefaultAutoSelectFamily(false);
+}
+
 console.log("Initializing Mailer for:", process.env.EMAIL_USER);
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     auth: {
         user: (process.env.EMAIL_USER || "").trim(),
         pass: (process.env.EMAIL_PASS || "").replace(/\s/g, "")
     },
-    logger: true, // Enable logging
-    debug: true,  // Show debug output
-    family: 4     // Force IPv4
+    family: 4,
+    connectionTimeout: 20000,
+    greetingTimeout: 20000,
+    socketTimeout: 20000
 });
 
 // Verify Transporter
