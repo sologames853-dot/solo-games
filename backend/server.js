@@ -4,6 +4,7 @@ const compression = require("compression");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
+const nodemailer = require("nodemailer");
 const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
@@ -34,6 +35,15 @@ app.use(cors());
 app.use(compression());
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
+
+// Nodemailer Config
+const transporter = nodemailer.createTransport({
+    service: process.env.EMAIL_SERVICE || "gmail",
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
 
 // Serve Frontend static files
 app.use(express.static(path.join(__dirname, "../Frontend")));
@@ -162,6 +172,70 @@ app.post("/api/login", async (req, res) => {
     } catch (error) {
         console.error("Login Error Details:", error);
         res.status(500).json({ success: false, message: `Server Error: ${error.message}` });
+    }
+});
+
+app.post("/api/forgot-password", async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.json({ success: false, message: "User not found with this email" });
+        }
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        user.resetPasswordToken = otp;
+        user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+        await user.save();
+
+        // Send Email
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: "Password Reset OTP - Solo Games",
+            html: `
+                <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                    <h2>Password Reset Request</h2>
+                    <p>You requested a password reset for your Solo Games account.</p>
+                    <p>Your OTP is: <strong style="font-size: 24px; color: #ff9800;">${otp}</strong></p>
+                    <p>This OTP is valid for 1 hour. If you didn't request this, please ignore this email.</p>
+                </div>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log(`Password reset OTP sent to ${email}`);
+
+        res.json({ success: true, message: "OTP sent to your email!" });
+    } catch (error) {
+        console.error("Forgot Password Error:", error);
+        res.status(500).json({ success: false, message: "Error sending email. Check your SMTP settings." });
+    }
+});
+
+app.post("/api/reset-password", async (req, res) => {
+    try {
+        const { email, otp, newPassword } = req.body;
+        const user = await User.findOne({
+            email,
+            resetPasswordToken: otp,
+            resetPasswordExpires: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.json({ success: false, message: "Invalid or expired OTP" });
+        }
+
+        const hash = await bcrypt.hash(newPassword, 10);
+        user.password = hash;
+        user.resetPasswordToken = null;
+        user.resetPasswordExpires = null;
+        await user.save();
+
+        res.json({ success: true, message: "Password reset successful" });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error" });
     }
 });
 
@@ -1029,7 +1103,7 @@ app.get("/api/admin/stats", adminAuth, async (req, res) => {
             const uid = u._id.toString();
 
             if (activeBets.aviator.some(b => b.userId.toString() === uid)) currentGame = "Aviator";
-            else if (colorGameManager.getLiveBets().some(b => b.userId.toString() === uid)) currentGame = "Color Game";
+            else if (colorGameManager.getLiveBets().some(b => b.userId.toString() === uid)) currentGame = "Big Daddy 2.0";
             else if (luckyDrawManager.bets.some(b => b.userId.toString() === uid)) currentGame = "Lucky Draw";
             else if (spinGameManager.bets.some(b => b.userId.toString() === uid)) currentGame = "Spin Game";
             else if (numberSpinManager.bets.some(b => b.userId.toString() === uid)) currentGame = "Number Spin";
@@ -1071,7 +1145,7 @@ app.post("/api/admin/force-result", adminAuth, (req, res) => {
             return res.json({ success: true, message: `Auto Open set to: ${autoOpen}` });
         }
         colorGameManager.forceNextResult(number);
-        return res.json({ success: true, message: `Next Color Game number set to: ${number}` });
+        return res.json({ success: true, message: `Next Big Daddy 2.0 number set to: ${number}` });
     } else if (game === 'luckydraw') {
         luckyDrawManager.forceResult(result);
         return res.json({ success: true, message: `Next Lucky Draw set to ${result}` });

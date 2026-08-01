@@ -102,7 +102,7 @@ class ColorGameManager {
                     user_id: bet.userId,
                     amount: winAmount,
                     type: "game_win",
-                    game_name: "Color Game",
+                    game_name: "Big Daddy 2.0",
                     details: `Won on ${bet.type} ${bet.value}. Result: ${resultNumber}`
                 }).save();
             } else {
@@ -112,7 +112,7 @@ class ColorGameManager {
                     user_id: bet.userId,
                     amount: -bet.amount,
                     type: "game_loss",
-                    game_name: "Color Game",
+                    game_name: "Big Daddy 2.0",
                     details: `Lost on ${bet.type} ${bet.value}. Result: ${resultNumber}`
                 }).save();
             }

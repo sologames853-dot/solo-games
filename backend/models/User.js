@@ -28,6 +28,8 @@ const UserSchema = new mongoose.Schema({
     lucky_draw_streak: { type: Number, default: 0 },
     ludo_bot_game_count: { type: Number, default: 0 },
     last_seen: { type: Date, default: Date.now },
+    resetPasswordToken: { type: String, default: null },
+    resetPasswordExpires: { type: Date, default: null },
     created_at: { type: Date, default: Date.now }
 });
 
