@@ -39,10 +39,15 @@ app.use("/uploads", express.static("uploads"));
 // Nodemailer Config
 console.log("Setting up mailer with user:", process.env.EMAIL_USER ? "CONFIGURED" : "MISSING");
 const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false, // port 587 uses STARTTLS
     auth: {
         user: process.env.EMAIL_USER,
         pass: (process.env.EMAIL_PASS || "").replace(/\s/g, "")
+    },
+    tls: {
+        rejectUnauthorized: false // Helps with some cloud network restrictions
     }
 });
 
