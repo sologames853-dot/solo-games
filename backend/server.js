@@ -36,20 +36,23 @@ app.use(compression());
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
-// Nodemailer Config
-console.log("Initializing Mailer for:", (process.env.EMAIL_USER || "").trim());
+// Nodemailer Config (Brevo SMTP)
+console.log("Initializing Brevo Mailer for:", (process.env.EMAIL_USER || "").trim());
 const transporter = nodemailer.createTransport({
     host: 'smtp-relay.brevo.com',
-    port: 465,
-    secure: true, // Use SSL/TLS
+    port: 587,
+    secure: false, // TLS
     auth: {
         user: (process.env.EMAIL_USER || "").trim(),
         pass: (process.env.EMAIL_PASS || "").trim()
     },
     tls: {
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
+        minVersion: 'TLSv1.2'
     },
-    connectionTimeout: 10000 // 10 seconds timeout
+    connectionTimeout: 20000, // Increased timeout to 20s
+    greetingTimeout: 20000,
+    socketTimeout: 30000
 });
 
 // Verify Transporter
