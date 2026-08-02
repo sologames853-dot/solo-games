@@ -12,8 +12,7 @@ module.exports = async (req, res, next) => {
         let token = req.headers.authorization;
         if (!token && req.query.token) token = req.query.token;
 
-        if (!token) {
-            console.log("Auth Middleware: Token Missing");
+        if (!token || token === 'null' || token === 'undefined') {
             return res.status(401).json({
                 success: false,
                 message: "Token Missing"

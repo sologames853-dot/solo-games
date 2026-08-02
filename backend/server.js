@@ -36,15 +36,18 @@ app.use(compression());
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
-// Nodemailer Config (Using Brevo for Render Compatibility)
-console.log("Initializing Brevo Mailer for:", process.env.EMAIL_USER);
+// Nodemailer Config
+console.log("Initializing Mailer for:", (process.env.EMAIL_USER || "").trim());
 const transporter = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com',
-    port: 587, // Let's try standard 587 for Brevo first
+    host: 'smtp-relay.brevo.com', // Brevo SMTP Relay
+    port: 587,
     secure: false,
     auth: {
         user: (process.env.EMAIL_USER || "").trim(),
         pass: (process.env.EMAIL_PASS || "").trim()
+    },
+    tls: {
+        rejectUnauthorized: false
     }
 });
 
