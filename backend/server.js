@@ -36,21 +36,23 @@ app.use(compression());
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
-// Nodemailer Config (Brevo / SendinBlue)
-console.log("Initializing Mailer for:", (process.env.EMAIL_USER || "").trim());
-// Safety check to see if password is being loaded
-if (process.env.EMAIL_PASS) {
-    console.log("SMTP Key detected (Starts with: " + process.env.EMAIL_PASS.substring(0, 8) + "...)");
-} else {
-    console.log("❌ ERROR: EMAIL_PASS is missing in environment variables!");
-}
+// Nodemailer Config (Brevo SMTP - Port 2525 is best for Render)
+const smtpLogin = (process.env.EMAIL_USER || "").trim();
+console.log("Initializing Mailer for Login:", smtpLogin);
 
 const transporter = nodemailer.createTransport({
-    service: 'SendinBlue', // Official shorthand for Brevo
+    host: 'smtp-relay.brevo.com',
+    port: 2525,
+    secure: false,
     auth: {
-        user: (process.env.EMAIL_USER || "").trim(),
+        user: smtpLogin,
         pass: (process.env.EMAIL_PASS || "").trim()
-    }
+    },
+    tls: {
+        rejectUnauthorized: false
+    },
+    connectionTimeout: 30000, // 30 seconds
+    greetingTimeout: 30000
 });
 
 // Verify Transporter
