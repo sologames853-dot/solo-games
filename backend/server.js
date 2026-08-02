@@ -39,16 +39,17 @@ app.use("/uploads", express.static("uploads"));
 // Nodemailer Config
 console.log("Initializing Mailer for:", (process.env.EMAIL_USER || "").trim());
 const transporter = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com', // Brevo SMTP Relay
-    port: 587,
-    secure: false,
+    host: 'smtp-relay.brevo.com',
+    port: 465,
+    secure: true, // Use SSL/TLS
     auth: {
         user: (process.env.EMAIL_USER || "").trim(),
         pass: (process.env.EMAIL_PASS || "").trim()
     },
     tls: {
         rejectUnauthorized: false
-    }
+    },
+    connectionTimeout: 10000 // 10 seconds timeout
 });
 
 // Verify Transporter
