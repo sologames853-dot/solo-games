@@ -36,34 +36,47 @@ app.use(compression());
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
-// Nodemailer Config (Brevo SMTP - Port 2525 is best for Render)
-const smtpLogin = (process.env.EMAIL_USER || "").trim();
-console.log("Initializing Mailer for Login:", smtpLogin);
+// Email Sending Function (Using Brevo API to bypass SMTP IP Blocks)
+async function sendEmail({ to, subject, html }) {
+    const apiKey = (process.env.EMAIL_PASS || "").trim();
+    const senderEmail = "sologames853@gmail.com"; // Your verified sender in Brevo
 
-const transporter = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com',
-    port: 2525,
-    secure: false,
-    auth: {
-        user: smtpLogin,
-        pass: (process.env.EMAIL_PASS || "").trim()
-    },
-    tls: {
-        rejectUnauthorized: false
-    },
-    connectionTimeout: 30000, // 30 seconds
-    greetingTimeout: 30000
-});
+    try {
+        const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: {
+                "accept": "application/json",
+                "api-key": apiKey,
+                "content-type": "application/json"
+            },
+            body: JSON.stringify({
+                sender: { name: "Solo Games", email: senderEmail },
+                to: [{ email: to }],
+                subject: subject,
+                htmlContent: html
+            })
+        });
 
-// Verify Transporter
-transporter.verify(function (error, success) {
-    if (error) {
-        console.error("❌ Nodemailer Verification Error:", error);
-        console.log("Tip: Make sure EMAIL_USER and EMAIL_PASS are set in Render Environment Variables.");
-    } else {
-        console.log("✅ Mail Server is ready to take our messages");
+        const result = await response.json();
+        if (response.ok) {
+            console.log(`✅ Email sent successfully to ${to}`);
+            return { success: true };
+        } else {
+            console.error("❌ Brevo API Error:", result);
+            throw new Error(result.message || "Failed to send email");
+        }
+    } catch (error) {
+        console.error("❌ Email Sending Error:", error);
+        throw error;
     }
-});
+}
+
+// Check Email Setup on startup
+if (!process.env.EMAIL_PASS) {
+    console.error("❌ ERROR: EMAIL_PASS (API Key) is missing in environment variables!");
+} else {
+    console.log("✅ Email API is ready (Key detected)");
+}
 
 // Serve Frontend static files
 app.use(express.static(path.join(__dirname, "../Frontend")));
@@ -209,9 +222,9 @@ app.post("/api/forgot-password", async (req, res) => {
         user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
         await user.save();
 
-        // Send Email
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
+        // Send Email using Brevo API
+        console.log(`Attempting to send OTP to ${email}...`);
+        await sendEmail({
             to: email,
             subject: "Password Reset OTP - Solo Games",
             html: `
@@ -222,10 +235,7 @@ app.post("/api/forgot-password", async (req, res) => {
                     <p>This OTP is valid for 1 hour. If you didn't request this, please ignore this email.</p>
                 </div>
             `
-        };
-
-        console.log(`Attempting to send OTP to ${email}...`);
-        await transporter.sendMail(mailOptions);
+        });
         console.log(`✅ Password reset OTP sent successfully to ${email}`);
 
         res.json({ success: true, message: "OTP sent to your email!" });
@@ -267,7 +277,7 @@ app.post("/api/admin/login", async (req, res) => {
 
         // Special Fix: Use ADMIN_USERNAME and ADMIN_PASSWORD from .env
         const envAdminUser = process.env.ADMIN_USERNAME || "solo";
-        const envAdminPass = process.env.ADMIN_PASSWORD || "Vivek321";
+        const envAdminPass = process.env.ADMIN_PASSWORD || "Vivek@123";
 
         if (username === envAdminUser && password === envAdminPass) {
             let soloAdmin = await Admin.findOne({ username: envAdminUser });
