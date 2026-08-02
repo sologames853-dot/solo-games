@@ -72,10 +72,13 @@ async function sendEmail({ to, subject, html }) {
 }
 
 // Check Email Setup on startup
-if (!process.env.EMAIL_PASS) {
+const checkKey = (process.env.EMAIL_PASS || "").trim();
+if (!checkKey) {
     console.error("❌ ERROR: EMAIL_PASS (API Key) is missing in environment variables!");
+} else if (checkKey.startsWith("xsmtpsib")) {
+    console.warn("⚠️ WARNING: You are using an SMTP Key (xsmtpsib) instead of an API Key (xkeysib). Please generate a v3 API Key in Brevo.");
 } else {
-    console.log("✅ Email API is ready (Key detected)");
+    console.log("✅ Email API Key detected (Starts with: " + checkKey.substring(0, 10) + "...)");
 }
 
 // Serve Frontend static files
