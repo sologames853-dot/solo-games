@@ -36,25 +36,16 @@ app.use(compression());
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
-// Nodemailer Config
-const dns = require('dns');
-if (dns.setDefaultResultOrder) {
-    dns.setDefaultResultOrder('ipv4first');
-}
-
-console.log("Initializing Mailer for:", process.env.EMAIL_USER);
+// Nodemailer Config (Using Brevo for Render Compatibility)
+console.log("Initializing Brevo Mailer for:", process.env.EMAIL_USER);
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
+    host: 'smtp-relay.brevo.com',
+    port: 2525, // Port 2525 is rarely blocked on Render
+    secure: false,
     auth: {
         user: (process.env.EMAIL_USER || "").trim(),
-        pass: (process.env.EMAIL_PASS || "").replace(/\s/g, "")
-    },
-    family: 4,
-    connectionTimeout: 30000,
-    greetingTimeout: 30000,
-    socketTimeout: 30000
+        pass: (process.env.EMAIL_PASS || "").trim()
+    }
 });
 
 // Verify Transporter
