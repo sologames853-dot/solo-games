@@ -40,7 +40,7 @@ app.use("/uploads", express.static("uploads"));
 console.log("Initializing Brevo Mailer for:", process.env.EMAIL_USER);
 const transporter = nodemailer.createTransport({
     host: 'smtp-relay.brevo.com',
-    port: 2525, // Port 2525 is rarely blocked on Render
+    port: 587, // Let's try standard 587 for Brevo first
     secure: false,
     auth: {
         user: (process.env.EMAIL_USER || "").trim(),
